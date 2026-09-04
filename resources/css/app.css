@@ -1,0 +1,39 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../views/**/*.blade.php';
+
+@theme {
+    --font-sans: 'Plus Jakarta Sans', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    --color-snack-primary: #7C2D12;
+    --color-snack-primary-hover: #5C1D08;
+    --color-snack-amber: #B45309;
+    --color-snack-yellow: #D97706;
+    --color-snack-dark: #231709;
+    --color-snack-card: #FFFFFF;
+    --color-snack-bg: #FDFBF7;
+}
+
+@layer utilities {
+    .bg-snack-gradient {
+        background: linear-gradient(135deg, #FBF6EE 0%, #F5EADB 50%, #E9D5BD 100%);
+    }
+    .bg-snack-hero {
+        background: radial-gradient(circle at 80% 20%, rgba(124, 45, 18, 0.12) 0%, rgba(245, 234, 219, 0.5) 50%, rgba(253, 251, 247, 1) 100%);
+    }
+    .snack-shadow {
+        box-shadow: 0 10px 30px -5px rgba(100, 43, 9, 0.10), 0 4px 10px -2px rgba(0, 0, 0, 0.04);
+    }
+    .snack-shadow-hover:hover {
+        box-shadow: 0 20px 35px -5px rgba(100, 43, 9, 0.18), 0 8px 16px -4px rgba(0, 0, 0, 0.06);
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+}
+
