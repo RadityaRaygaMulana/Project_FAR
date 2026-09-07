@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
+use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -186,5 +189,87 @@ class ProfileController extends Controller
 
         return redirect()->route('settings')
             ->with('address_success', 'Alamat pengiriman belanja kamu berhasil disimpan! 📍✨');
+    }
+
+    /**
+     * Delete the authenticated user account permanently.
+     */
+    public function deleteAccount(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        // 1. Validate current password
+        $request->validate([
+            'password' => ['required', 'string'],
+        ], [
+            'password.required' => 'Kata sandi akun wajib diisi untuk mengonfirmasi penghapusan akun.',
+        ]);
+
+        if (! Hash::check($request->password, $user->password)) {
+            return redirect()->route('settings')
+                ->with('delete_error', 'Kata sandi yang kamu masukkan salah. Penghapusan akun dibatalkan.');
+        }
+
+        // 2. Protect against deleting the only active Administrator
+        if ($user->role === 'admin') {
+            $otherAdmins = User::where('role', 'admin')->where('id', '!=', $user->id)->count();
+            if ($otherAdmins === 0) {
+                return redirect()->route('settings')
+                    ->with('delete_error', 'Akun Administrator utama tidak dapat dihapus karena merupakan satu-satunya akun admin di sistem.');
+            }
+        }
+
+        // 3. Check for active buyer orders
+        $activeBuyerOrders = $user->orders()
+            ->whereIn('status', ['pending', 'paid', 'processing'])
+            ->exists();
+
+        if ($activeBuyerOrders) {
+            return redirect()->route('settings')
+                ->with('delete_error', 'Kamu masih memiliki pesanan belanja yang sedang berlangsung. Harap tunggu hingga pesanan selesai atau dibatalkan terlebih dahulu sebelum menghapus akun.');
+        }
+
+        // 4. Check for active seller store orders if user owns a store
+        if ($user->store) {
+            $store = $user->store;
+            $activeSellerOrders = Order::whereHas('items.product', fn ($q) => $q->where('store_id', $store->id))
+                ->whereIn('status', ['pending', 'processing'])
+                ->exists();
+
+            if ($activeSellerOrders) {
+                return redirect()->route('settings')
+                    ->with('delete_error', 'Toko kamu masih memiliki pesanan pembeli yang sedang diproses. Harap selesaikan seluruh pesanan terlebih dahulu sebelum menghapus akun.');
+            }
+
+            // Cleanup store files
+            if ($store->logo && Storage::disk('public')->exists($store->logo)) {
+                Storage::disk('public')->delete($store->logo);
+            }
+            if ($store->ktp_photo_path && Storage::disk('public')->exists($store->ktp_photo_path)) {
+                Storage::disk('public')->delete($store->ktp_photo_path);
+            }
+        }
+
+        // 5. Cleanup user avatar
+        if ($user->avatar && ! str_starts_with($user->avatar, 'http') && Storage::disk('public')->exists($user->avatar)) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        $userName = $user->name;
+        $userEmail = $user->email;
+
+        // 6. Log audit entry
+        AuditLogger::profile('Hapus Akun Sendiri', "Pengguna {$userName} ({$userEmail}) menghapus akunnya sendiri secara permanen.", $user);
+
+        // 7. Logout and invalidate session
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        // 8. Delete user record (foreign keys cascade orders, reviews, vouchers, store, etc.)
+        $user->delete();
+
+        return redirect()->route('home')
+            ->with('success', 'Akun kamu telah berhasil dihapus secara permanen. Terima kasih telah menjadi bagian dari NusantaraMart!');
     }
 }

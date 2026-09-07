@@ -50,9 +50,19 @@
                         <span class="text-xs font-black text-[#2D241E] group-hover:text-[#6B4226] truncate max-w-[120px] sm:max-w-[180px]">
                             {{ $store->name }}
                         </span>
-                        <span class="bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded uppercase">
-                            Resmi
-                        </span>
+                        @if($store->isSuspended())
+                            <span class="bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                🚫 Ditangguhkan
+                            </span>
+                        @elseif($store->isClosed())
+                            <span class="bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                ⏸️ Tutup Sementara
+                            </span>
+                        @else
+                            <span class="bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                🟢 Buka
+                            </span>
+                        @endif
                     </a>
                 @endif
             </div>
@@ -134,9 +144,42 @@
                     <span>⚙️</span>
                     <span>Pengaturan Toko</span>
                 </a>
-            </div>
         </div>
     </header>
+
+    @if($store && $store->isClosed())
+        <!-- CLOSED STORE (MODE LIBUR) NOTICE BAR -->
+        <div class="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white px-4 sm:px-6 lg:px-8 py-2.5 shadow-sm border-b border-amber-400/40">
+            <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div class="flex items-center gap-2.5 text-center sm:text-left">
+                    <span class="text-xl shrink-0">⏸️</span>
+                    <div>
+                        <span class="font-extrabold uppercase tracking-wide bg-amber-800/60 px-2 py-0.5 rounded text-[10px] mr-1.5">Mode Libur</span>
+                        <span><strong>Status Toko Saat Ini Tutup Sementara:</strong> Pelanggan tetap dapat melihat katalog produk, tetapi tidak dapat memesan barang hingga kamu membuka toko kembali.</span>
+                    </div>
+                </div>
+                <form action="{{ route('seller.store.toggle_status') }}" method="POST" class="shrink-0">
+                    @csrf
+                    <button type="submit" 
+                            class="px-4 py-1.5 bg-white hover:bg-amber-50 text-amber-900 font-black rounded-xl text-xs shadow-md transition transform active:scale-95 flex items-center gap-1.5 cursor-pointer">
+                        <span>▶️</span>
+                        <span>Buka Toko Kembali Sekarang</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    @elseif($store && $store->isSuspended())
+        <!-- SUSPENDED NOTICE BAR -->
+        <div class="bg-gradient-to-r from-red-600 via-rose-600 to-red-600 text-white px-4 sm:px-6 lg:px-8 py-2.5 shadow-sm border-b border-red-400/40">
+            <div class="max-w-7xl mx-auto flex items-center gap-2.5 text-xs">
+                <span class="text-xl shrink-0">🚫</span>
+                <div>
+                    <span class="font-extrabold uppercase tracking-wide bg-red-900/60 px-2 py-0.5 rounded text-[10px] mr-1.5">Toko Ditangguhkan</span>
+                    <span>Toko kamu sedang ditangguhkan oleh administrator. {{ $store->suspension_reason ? 'Alasan: "'.$store->suspension_reason.'"' : '' }} {{ $store->suspended_until ? '(Hingga '.$store->suspended_until->translatedFormat('d M Y H:i').')' : '(Permanen hingga dicabut admin)' }}.</span>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <!-- FLASH MESSAGES (AUTO-DISMISS AFTER 5 SECONDS) -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 w-full">

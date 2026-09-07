@@ -37,7 +37,11 @@
              followingLoading: false,
              async toggleFollow() {
                  @guest
-                     window.location.href = '{{ route('login') }}';
+                     window.showAuthModal({
+                         icon: '🏪',
+                         title: 'Ikuti Toko Resmi',
+                         message: 'Yuk masuk ke akunmu terlebih dahulu untuk mengikuti toko {{ addslashes($storeInfo['name']) }} dan dapatkan info produk serta promo eksklusif!'
+                     });
                      return;
                  @endguest
 
@@ -128,16 +132,25 @@
                             </button>
                         @endif
 
-                        <form action="{{ route('chat.start') }}" method="POST">
-                            @csrf
-                            @if($storeModel)
-                                <input type="hidden" name="store_id" value="{{ $storeModel->id }}">
-                            @endif
-                            <button type="submit" class="px-4 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-1.5 border border-white/30 transition active:scale-95 cursor-pointer">
+                        @guest
+                            <button type="button" 
+                                    @click="window.showAuthModal({ icon: '💬', title: 'Chat dengan Penjual Toko', message: 'Yuk masuk ke akunmu terlebih dahulu untuk mengobrol dan bertanya langsung ke penjual {{ addslashes($storeInfo['name']) }}.' })"
+                                    class="px-4 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-1.5 border border-white/30 transition active:scale-95 cursor-pointer">
                                 <span>💬</span>
                                 <span>Chat Toko</span>
                             </button>
-                        </form>
+                        @else
+                            <form action="{{ route('chat.start') }}" method="POST">
+                                @csrf
+                                @if($storeModel)
+                                    <input type="hidden" name="store_id" value="{{ $storeModel->id }}">
+                                @endif
+                                <button type="submit" class="px-4 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-1.5 border border-white/30 transition active:scale-95 cursor-pointer">
+                                    <span>💬</span>
+                                    <span>Chat Toko</span>
+                                </button>
+                            </form>
+                        @endguest
                     </div>
                 </div>
             </div>

@@ -41,6 +41,10 @@ class Product extends Model
         'gallery_images',
         'is_featured',
         'is_available',
+        'allowed_payment_methods',
+        'is_free_shipping',
+        'free_shipping_min_spend',
+        'allow_vouchers',
     ];
 
     /**
@@ -61,6 +65,10 @@ class Product extends Model
             'is_featured' => 'boolean',
             'is_available' => 'boolean',
             'gallery_images' => 'array',
+            'allowed_payment_methods' => 'array',
+            'is_free_shipping' => 'boolean',
+            'free_shipping_min_spend' => 'integer',
+            'allow_vouchers' => 'boolean',
         ];
     }
 
@@ -230,10 +238,51 @@ class Product extends Model
      */
     public function originCity(): Attribute
     {
-        $cities = ['Kota Bandung', 'Jakarta Selatan', 'Kota Surabaya', 'Kab. Tangerang', 'Kota Semarang', 'Kota Medan', 'Kota Yogyakarta'];
-
         return Attribute::make(
-            get: fn (): string => $cities[$this->id % count($cities)],
+            get: function (): string {
+                // Real store city from seller profile
+                if ($this->store && ! empty($this->store->city)) {
+                    $city = trim($this->store->city);
+                    if (! str_starts_with(strtolower($city), 'kota ') && ! str_starts_with(strtolower($city), 'kab. ') && ! str_starts_with(strtolower($city), 'kabupaten ')) {
+                        return 'Kota '.$city;
+                    }
+
+                    return $city;
+                }
+
+                // Real owner user city if store city is empty
+                if ($this->store && $this->store->user && ! empty($this->store->user->city)) {
+                    $userCity = trim($this->store->user->city);
+                    if (! str_starts_with(strtolower($userCity), 'kota ') && ! str_starts_with(strtolower($userCity), 'kab. ') && ! str_starts_with(strtolower($userCity), 'kabupaten ')) {
+                        return 'Kota '.$userCity;
+                    }
+
+                    return $userCity;
+                }
+
+                return 'Kota Bandung';
+            },
+        );
+    }
+
+    /**
+     * Get seller full origin address for marketplace card / shipping tooltip.
+     */
+    public function originAddress(): Attribute
+    {
+        return Attribute::make(
+            get: function (): string {
+                $parts = [];
+                if ($this->store && ! empty($this->store->address_detail)) {
+                    $parts[] = trim($this->store->address_detail);
+                }
+                $parts[] = $this->origin_city;
+                if ($this->store && ! empty($this->store->province)) {
+                    $parts[] = trim($this->store->province);
+                }
+
+                return implode(', ', array_filter($parts));
+            },
         );
     }
 
@@ -257,5 +306,92 @@ class Product extends Model
     public function scopeFeatured(Builder $query): Builder
     {
         return $query->where('is_featured', true);
+    }
+
+    /**
+     * Get the effective allowed payment methods for this product.
+     *
+     * @return array<int, string>
+     */
+    public function getAllowedPaymentMethodsAttribute(): array
+    {
+        $methods = $this->attributes['allowed_payment_methods'] ?? null;
+        if ($methods) {
+            $decoded = is_string($methods) ? json_decode($methods, true) : $methods;
+            if (is_array($decoded) && ! empty($decoded)) {
+                return array_values($decoded);
+            }
+        }
+
+        return ['qris', 'cod'];
+    }
+
+    /**
+     * Check whether a specific payment method is supported by this product.
+     */
+    public function allowsPaymentMethod(string $method): bool
+    {
+        return in_array($method, $this->allowed_payment_methods, true);
+    }
+
+    /**
+     * Check whether this product belongs to the given user's store.
+     */
+    public function isOwnedBy(User|int|null $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $userId = $user instanceof User ? $user->id : (int) $user;
+
+        return (int) ($this->store?->user_id) === $userId;
+    }
+
+    /**
+     * Check whether this product qualifies for free shipping (optionally against subtotal).
+     */
+    public function hasFreeShipping(?int $subtotal = null): bool
+    {
+        if (! $this->is_free_shipping) {
+            return false;
+        }
+
+        if ($this->free_shipping_min_spend > 0 && $subtotal !== null) {
+            return $subtotal >= $this->free_shipping_min_spend;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check whether this product allows vouchers.
+     */
+    public function allowsVouchers(): bool
+    {
+        return (bool) $this->allow_vouchers;
+    }
+
+    /**
+     * Get the route key for the model.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    /**
+     * Retrieve the model for a bound value (supports both slug and id).
+     *
+     * @param  mixed  $value
+     * @param  string|null  $field
+     */
+    public function resolveRouteBinding($value, $field = null): ?Model
+    {
+        if (is_numeric($value)) {
+            return $this->where('id', (int) $value)->first() ?? $this->where('slug', $value)->first();
+        }
+
+        return $this->where('slug', $value)->first() ?? $this->where('id', $value)->first();
     }
 }

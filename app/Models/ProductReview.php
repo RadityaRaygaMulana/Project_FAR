@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProductReview extends Model
 {
@@ -63,6 +64,42 @@ class ProductReview extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    /**
+     * Get the likes for this review.
+     *
+     * @return HasMany<ProductReviewLike, $this>
+     */
+    public function likes(): HasMany
+    {
+        return $this->hasMany(ProductReviewLike::class);
+    }
+
+    /**
+     * Get the comments/replies for this review.
+     *
+     * @return HasMany<ProductReviewComment, $this>
+     */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(ProductReviewComment::class)->oldest();
+    }
+
+    /**
+     * Check if a given user has liked this review.
+     */
+    public function isLikedBy(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($this->relationLoaded('likes')) {
+            return $this->likes->contains('user_id', $user->id);
+        }
+
+        return $this->likes()->where('user_id', $user->id)->exists();
     }
 
     /**

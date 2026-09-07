@@ -173,7 +173,7 @@
                         </span>
                         <span class="px-3 py-1 rounded-xl bg-white/10 backdrop-blur-xs border border-white/15 text-white font-bold flex items-center gap-1.5">
                             <span>💰</span>
-                            <span>Bebas Biaya Admin QRIS</span>
+                            <span>Pembayaran QRIS Praktis</span>
                         </span>
                     </div>
                 </div>
@@ -928,28 +928,24 @@
                             <span class="text-base sm:text-lg font-black" x-text="'Rp ' + calculateGrandTotal().toLocaleString('id-ID')"></span>
                         </div>
 
-                        <!-- Payment Method Selector -->
-                        <div class="space-y-2">
+                        <!-- Payment Method Selector (Clean QRIS) -->
+                        <div class="space-y-1.5">
                             <label class="block text-xs font-bold text-[#2D241E]">Metode Pembayaran</label>
-                            <div class="space-y-2">
-                                <label class="p-2.5 rounded-xl border border-[#EAE1D7] hover:bg-[#FAF8F5] flex items-center justify-between cursor-pointer text-xs">
-                                    <div class="flex items-center gap-2">
-                                        <input type="radio" name="payment_method" value="qris" checked class="text-[#6B4226] focus:ring-[#6B4226]">
-                                        <span class="text-base">📱</span>
-                                        <span class="font-bold text-[#2D241E]">QRIS Instant (Semua E-Wallet & Bank)</span>
+                            <label class="p-3.5 rounded-2xl border border-[#6B4226] bg-[#FAF8F5] hover:bg-[#FAF4ED] flex items-center justify-between cursor-pointer transition shadow-2xs">
+                                <div class="flex items-center gap-3">
+                                    <input type="radio" name="payment_method" value="qris" checked class="text-[#6B4226] focus:ring-[#6B4226] cursor-pointer">
+                                    <div class="w-9 h-9 rounded-xl bg-white border border-[#EAE1D7] flex items-center justify-center text-base shadow-2xs shrink-0">
+                                        📱
                                     </div>
-                                    <span class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Bebas Biaya</span>
-                                </label>
-
-                                <label class="p-2.5 rounded-xl border border-[#EAE1D7] hover:bg-[#FAF8F5] flex items-center justify-between cursor-pointer text-xs">
-                                    <div class="flex items-center gap-2">
-                                        <input type="radio" name="payment_method" value="cod" class="text-[#6B4226] focus:ring-[#6B4226]">
-                                        <span class="text-base">💵</span>
-                                        <span class="font-bold text-[#2D241E]">COD (Bayar Tunai)</span>
+                                    <div>
+                                        <div class="font-bold text-xs text-[#2D241E]">QRIS Instant</div>
+                                        <p class="text-[11px] text-[#8A7C70] mt-0.5">BCA, Mandiri, BRI, BNI, GoPay, OVO, DANA, ShopeePay</p>
                                     </div>
-                                    <span class="text-[10px] text-[#8A7C70] font-medium bg-[#FAF4ED] px-2 py-0.5 rounded-full border border-[#EAE1D7]">Tunai</span>
-                                </label>
-                            </div>
+                                </div>
+                                <span class="w-5 h-5 rounded-full bg-[#6B4226] text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                                    ✓
+                                </span>
+                            </label>
                         </div>
 
                         <!-- Direct Payment Submit Button -->
