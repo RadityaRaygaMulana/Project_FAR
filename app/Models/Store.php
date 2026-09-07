@@ -38,6 +38,10 @@ class Store extends Model
         'status',
         'rejection_reason',
         'approved_at',
+        'is_suspended',
+        'suspension_reason',
+        'suspended_at',
+        'suspended_until',
     ];
 
     /**
@@ -50,6 +54,9 @@ class Store extends Model
         return [
             'rating' => 'float',
             'approved_at' => 'datetime',
+            'is_suspended' => 'boolean',
+            'suspended_at' => 'datetime',
+            'suspended_until' => 'datetime',
         ];
     }
 
@@ -112,11 +119,77 @@ class Store extends Model
     }
 
     /**
+     * Check if store is temporarily closed by the seller (mode libur / tutup sementara).
+     */
+    public function isClosed(): bool
+    {
+        return $this->status === 'closed';
+    }
+
+    /**
+     * Check if store is permanently closed (gulung tikar / berhenti beroperasi).
+     */
+    public function isPermanentlyClosed(): bool
+    {
+        return $this->status === 'permanently_closed';
+    }
+
+    /**
+     * Check if store is currently open and accepting orders.
+     */
+    public function isOpen(): bool
+    {
+        return $this->isApproved() && ! $this->isSuspended() && ! $this->isClosed() && ! $this->isPermanentlyClosed();
+    }
+
+    /**
      * Check if store application was rejected by admin.
      */
     public function isRejected(): bool
     {
         return $this->status === 'rejected';
+    }
+
+    /**
+     * Get user-friendly status badge text.
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        if ($this->isSuspended()) {
+            return 'Ditangguhkan';
+        }
+
+        return match ($this->status) {
+            'approved' => 'Buka (Operasional)',
+            'closed' => 'Tutup Sementara (Mode Libur)',
+            'permanently_closed' => 'Gulung Tikar (Tutup Permanen)',
+            'rejected' => 'Ditolak',
+            'pending' => 'Menunggu Verifikasi',
+            default => ucfirst((string) $this->status),
+        };
+    }
+
+    /**
+     * Check if this store is currently suspended by an administrator.
+     */
+    public function isSuspended(): bool
+    {
+        if (! $this->is_suspended) {
+            return false;
+        }
+
+        if ($this->suspended_until && now()->greaterThanOrEqualTo($this->suspended_until)) {
+            $this->update([
+                'is_suspended' => false,
+                'suspension_reason' => null,
+                'suspended_at' => null,
+                'suspended_until' => null,
+            ]);
+
+            return false;
+        }
+
+        return true;
     }
 
     /**

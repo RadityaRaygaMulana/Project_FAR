@@ -179,7 +179,7 @@ class OrderReviewTabTest extends TestCase
             'photos' => ['reviews/sample_review.jpg'],
         ]);
 
-        $response = $this->get(route('product.detail', $product->slug));
+        $response = $this->actingAs($buyer)->get(route('product.detail', $product->slug));
         $response->assertOk();
         $response->assertSee('Barang istimewa!');
         $response->assertSee('storage/reviews/sample_review.jpg');

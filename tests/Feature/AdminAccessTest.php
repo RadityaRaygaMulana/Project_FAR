@@ -178,4 +178,50 @@ class AdminAccessTest extends TestCase
         $logContent = File::get($logFile);
         $this->assertStringContainsString('[AUDIT:AUTH] Logout', $logContent);
     }
+
+    public function test_admin_can_suspend_user_with_duration_and_reason(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create([
+            'username' => 'suspendee',
+            'role' => 'customer',
+            'password' => Hash::make('password123'),
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.users.suspend', $customer), [
+            'suspension_reason' => 'Melanggar aturan komunitas terkait spam.',
+            'duration' => '7_days',
+        ]);
+
+        $response->assertRedirect();
+        $fresh = $customer->fresh();
+        $this->assertTrue((bool) $fresh->is_suspended);
+        $this->assertSame('Melanggar aturan komunitas terkait spam.', $fresh->suspension_reason);
+        $this->assertNotNull($fresh->suspended_until);
+        $this->assertTrue($fresh->suspended_until->isFuture());
+
+        // Login attempt blocked
+        $this->post(route('logout'));
+        $loginResponse = $this->post(route('login'), [
+            'login' => 'suspendee',
+            'password' => 'password123',
+        ]);
+        $loginResponse->assertSessionHas('suspended', true);
+        $loginResponse->assertSessionHas('suspension_reason');
+    }
+
+    public function test_user_can_delete_own_account_with_correct_password(): void
+    {
+        $customer = User::factory()->create([
+            'role' => 'customer',
+            'password' => Hash::make('mypassword123'),
+        ]);
+
+        $response = $this->actingAs($customer)->delete(route('settings.delete_account'), [
+            'password' => 'mypassword123',
+        ]);
+
+        $response->assertRedirect(route('home'));
+        $this->assertDatabaseMissing('users', ['id' => $customer->id]);
+    }
 }
