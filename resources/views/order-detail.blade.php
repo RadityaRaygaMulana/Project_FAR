@@ -462,26 +462,7 @@
                         </span>
                     </div>
 
-                    @if($order->shipping_discount_amount > 0)
-                        <div class="flex justify-between text-emerald-700 font-bold">
-                            <span>Potongan Voucher Ongkir ({{ $order->shipping_voucher_code ?? 'Voucher' }}):</span>
-                            <span>- Rp {{ number_format($order->shipping_discount_amount, 0, ',', '.') }}</span>
-                        </div>
-                    @endif
-
-                    @if(!empty($order->discount_voucher_code))
-                        <div class="flex justify-between text-emerald-700 font-bold">
-                            <span>Potongan Voucher Diskon ({{ $order->discount_voucher_code }}):</span>
-                            <span>- Rp {{ number_format(max(0, $order->discount_amount - ($order->redeem_discount_amount ?? 0)), 0, ',', '.') }}</span>
-                        </div>
-                    @endif
-
-                    @if(!empty($order->redeem_code) && ($order->redeem_discount_amount > 0 || empty($order->discount_voucher_code)))
-                        <div class="flex justify-between text-emerald-700 font-bold">
-                            <span>Potongan Kode Redeem ({{ $order->redeem_code }}):</span>
-                            <span>- Rp {{ number_format($order->redeem_discount_amount ?: $order->discount_amount, 0, ',', '.') }}</span>
-                        </div>
-                    @elseif($order->discount_amount > 0 && empty($order->discount_voucher_code) && empty($order->redeem_code))
+                    @if($order->discount_amount > 0)
                         <div class="flex justify-between text-rose-600 font-bold">
                             <span>Potongan Kupon Promo ({{ $order->coupon_code }}):</span>
                             <span>- Rp {{ number_format($order->discount_amount, 0, ',', '.') }}</span>

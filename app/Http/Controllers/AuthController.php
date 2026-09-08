@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SuspensionAppeal;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\GmailService;
@@ -56,30 +55,6 @@ class AuthController extends Controller
         if (Auth::attempt($primaryCredentials, $remember) || Auth::attempt($secondaryCredentials, $remember)) {
             $request->session()->regenerate();
             $user = Auth::user();
-
-            // Block suspended accounts before they enter the system
-            if ($user->isSuspended()) {
-                $reason = $user->suspension_reason ?? 'Melanggar ketentuan layanan.';
-                $until = $user->suspended_until;
-
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-
-                $existingAppeal = SuspensionAppeal::where('user_id', $user->id)->latest()->first();
-
-                return redirect()->route('login')
-                    ->with('suspended', true)
-                    ->with('suspension_reason', $reason)
-                    ->with('suspended_until', $until ? $until->translatedFormat('d F Y, H:i') : null)
-                    ->with('suspended_diff', $until ? $until->diffForHumans() : null)
-                    ->with('is_permanent', $until === null)
-                    ->with('suspended_identifier', $user->email)
-                    ->with('suspended_name', $user->name)
-                    ->with('latest_appeal_status', $existingAppeal?->status)
-                    ->with('latest_appeal_notes', $existingAppeal?->admin_notes)
-                    ->with('latest_appeal_date', $existingAppeal?->created_at?->translatedFormat('d M Y, H:i'));
-            }
 
             AuditLogger::auth('Login Sukses', 'Pengguna berhasil masuk ke sistem', $user, $request);
 

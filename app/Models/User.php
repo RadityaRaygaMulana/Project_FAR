@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -37,10 +36,6 @@ use Illuminate\Notifications\Notifiable;
     'role',
     'otp_code',
     'otp_expires_at',
-    'is_suspended',
-    'suspension_reason',
-    'suspended_at',
-    'suspended_until',
 ])]
 #[Hidden(['password', 'remember_token', 'otp_code'])]
 class User extends Authenticatable
@@ -62,33 +57,7 @@ class User extends Authenticatable
             'latitude' => 'float',
             'longitude' => 'float',
             'otp_expires_at' => 'datetime',
-            'is_suspended' => 'boolean',
-            'suspended_at' => 'datetime',
-            'suspended_until' => 'datetime',
         ];
-    }
-
-    /**
-     * Check if this user account is currently suspended by an administrator.
-     */
-    public function isSuspended(): bool
-    {
-        if (! $this->is_suspended) {
-            return false;
-        }
-
-        if ($this->suspended_until && now()->greaterThanOrEqualTo($this->suspended_until)) {
-            $this->update([
-                'is_suspended' => false,
-                'suspension_reason' => null,
-                'suspended_at' => null,
-                'suspended_until' => null,
-            ]);
-
-            return false;
-        }
-
-        return true;
     }
 
     /**
@@ -170,7 +139,7 @@ class User extends Authenticatable
      */
     public function isSeller(): bool
     {
-        return $this->store !== null && in_array($this->store->status, ['approved', 'closed']);
+        return $this->store !== null && $this->store->isApproved();
     }
 
     /**
@@ -189,108 +158,5 @@ class User extends Authenticatable
     public function buyerConversations(): HasMany
     {
         return $this->hasMany(Conversation::class);
-    }
-
-    /**
-     * Get user voucher claim records.
-     *
-     * @return HasMany<UserVoucher, $this>
-     */
-    public function userVouchers(): HasMany
-    {
-        return $this->hasMany(UserVoucher::class);
-    }
-
-    /**
-     * Get vouchers claimed by this user.
-     *
-     * @return BelongsToMany<Voucher, $this>
-     */
-    public function vouchers(): BelongsToMany
-    {
-        return $this->belongsToMany(Voucher::class, 'user_vouchers')
-            ->withPivot(['claimed_at', 'used_at', 'order_id'])
-            ->withTimestamps();
-    }
-
-    /**
-     * Get product review likes by this user.
-     *
-     * @return HasMany<ProductReviewLike, $this>
-     */
-    public function reviewLikes(): HasMany
-    {
-        return $this->hasMany(ProductReviewLike::class);
-    }
-
-    /**
-     * Get comments on product reviews written by this user.
-     *
-     * @return HasMany<ProductReviewComment, $this>
-     */
-    public function reviewComments(): HasMany
-    {
-        return $this->hasMany(ProductReviewComment::class);
-    }
-
-    /**
-     * Get the user's membership tier ('silver', 'gold', 'platinum').
-     */
-    public function getMemberTierAttribute(): string
-    {
-        if ($this->role === 'admin') {
-            return 'platinum';
-        }
-
-        $totalSpent = (float) $this->orders()->whereIn('status', ['paid', 'processing', 'completed'])->sum('grand_total');
-        $totalOrders = $this->orders()->count();
-
-        if ($totalSpent >= 1000000 || $totalOrders >= 10) {
-            return 'platinum';
-        }
-
-        if ($totalSpent >= 250000 || $totalOrders >= 3) {
-            return 'gold';
-        }
-
-        return 'silver';
-    }
-
-    /**
-     * Get formatted member tier title with badge.
-     */
-    public function getMemberTierLabelAttribute(): string
-    {
-        return match ($this->member_tier) {
-            'platinum' => '👑 Platinum VIP',
-            'gold' => '🥇 Gold Member',
-            default => '🥈 Silver Member',
-        };
-    }
-
-    /**
-     * Check if this user meets or exceeds a required membership tier.
-     */
-    public function meetsTierRequirement(?string $requiredTier): bool
-    {
-        if (empty($requiredTier) || $requiredTier === 'all') {
-            return true;
-        }
-
-        $hierarchy = [
-            'silver' => 1,
-            'gold' => 2,
-            'platinum' => 3,
-        ];
-
-        $userLevel = $hierarchy[$this->member_tier] ?? 1;
-        $reqLevel = $hierarchy[strtolower($requiredTier)] ?? 1;
-
-        return $userLevel >= $reqLevel;
-    }
-
-    public function suspensionAppeals()
-    {
-        return $this->hasMany(SuspensionAppeal::class);
     }
 }

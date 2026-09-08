@@ -6,7 +6,6 @@ use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
-use App\Models\Store;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -141,21 +140,5 @@ class ProductDatabaseTest extends TestCase
         $this->assertDatabaseHas('categories', ['slug' => 'fashion-pakaian']);
         $this->assertGreaterThanOrEqual(6, Category::count());
         $this->assertEquals(0, Product::count());
-    }
-
-    public function test_product_origin_city_and_address_uses_real_store_location(): void
-    {
-        $store = Store::factory()->create([
-            'city' => 'Bandung',
-            'province' => 'Jawa Barat',
-            'address_detail' => 'Jl. Merdeka No. 12',
-        ]);
-
-        $product = Product::factory()->create([
-            'store_id' => $store->id,
-        ]);
-
-        $this->assertEquals('Kota Bandung', $product->origin_city);
-        $this->assertEquals('Jl. Merdeka No. 12, Kota Bandung, Jawa Barat', $product->origin_address);
     }
 }

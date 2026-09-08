@@ -8,7 +8,6 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\User;
-use App\Models\Voucher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -18,22 +17,13 @@ class SellerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guest_is_redirected_to_login_when_accessing_seller_registration(): void
+    public function test_guest_can_view_seller_registration_landing_page(): void
     {
         $response = $this->get(route('seller.register'));
 
-        $response->assertRedirect(route('login'));
-    }
-
-    public function test_authenticated_user_can_view_seller_registration_landing_page(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user)->get(route('seller.register'));
-
         $response->assertStatus(200);
         $response->assertSee('Program Mitra Penjual NusantaraMart');
-        $response->assertSee('Buka Toko NusantaraMart');
+        $response->assertSee('Buka Toko & Jual Produkmu di NusantaraMart', false);
     }
 
     public function test_authenticated_user_can_submit_store_application(): void
@@ -383,7 +373,7 @@ class SellerTest extends TestCase
             'sold_count' => 14,
         ]);
 
-        $response = $this->actingAs($user)->get(route('product.detail', ['product' => $product->slug]));
+        $response = $this->get(route('product.detail', ['product' => $product->slug]));
 
         $response->assertStatus(200);
         $response->assertSee('Bandung Barat');
@@ -581,274 +571,5 @@ class SellerTest extends TestCase
 
         $response->assertStatus(403);
         $this->assertEquals('pending', $order->fresh()->status);
-    }
-
-    public function test_seller_must_choose_at_least_one_payment_method_when_submitted(): void
-    {
-        $user = User::factory()->create(['role' => 'seller']);
-        $store = Store::factory()->approved()->create(['user_id' => $user->id]);
-        $category = Category::factory()->create();
-
-        $response = $this->actingAs($user)->post(route('seller.products.store'), [
-            'name' => 'Keripik Tempe Renyah',
-            'category_id' => $category->id,
-            'price' => 15000,
-            'stock' => 50,
-            'weight_grams' => 200,
-            'description' => 'Keripik tempe gurih khas Nusantara.',
-            'payment_methods_submitted' => '1',
-            'allowed_payment_methods' => [],
-        ]);
-
-        $response->assertSessionHasErrors(['allowed_payment_methods']);
-    }
-
-    public function test_seller_can_create_and_update_product_with_custom_payment_methods(): void
-    {
-        $user = User::factory()->create(['role' => 'seller']);
-        $store = Store::factory()->approved()->create(['user_id' => $user->id]);
-        $category = Category::factory()->create();
-
-        // Create with QRIS only
-        $response = $this->actingAs($user)->post(route('seller.products.store'), [
-            'name' => 'Kopi Robusta Lampung',
-            'category_id' => $category->id,
-            'price' => 45000,
-            'stock' => 20,
-            'weight_grams' => 250,
-            'description' => 'Kopi robusta asli dari petani Lampung.',
-            'payment_methods_submitted' => '1',
-            'allowed_payment_methods' => ['qris'],
-        ]);
-
-        $response->assertRedirect(route('seller.products.index'));
-        $product = Product::where('name', 'Kopi Robusta Lampung')->first();
-        $this->assertNotNull($product);
-        $this->assertEquals(['qris'], $product->allowed_payment_methods);
-        $this->assertTrue($product->allowsPaymentMethod('qris'));
-        $this->assertFalse($product->allowsPaymentMethod('cod'));
-
-        // Update to QRIS + COD
-        $updateResponse = $this->actingAs($user)->put(route('seller.products.update', $product->id), [
-            'name' => 'Kopi Robusta Lampung Super',
-            'category_id' => $category->id,
-            'price' => 48000,
-            'stock' => 15,
-            'weight_grams' => 250,
-            'description' => 'Kopi robusta premium pilihan.',
-            'payment_methods_submitted' => '1',
-            'allowed_payment_methods' => ['qris', 'cod'],
-        ]);
-
-        $updateResponse->assertRedirect(route('seller.products.index'));
-        $product->refresh();
-        $this->assertEquals(['qris', 'cod'], $product->allowed_payment_methods);
-        $this->assertTrue($product->allowsPaymentMethod('qris'));
-        $this->assertTrue($product->allowsPaymentMethod('cod'));
-    }
-
-    public function test_seller_cannot_use_disallowed_payment_method(): void
-    {
-        $user = User::factory()->create(['role' => 'seller']);
-        $store = Store::factory()->approved()->create(['user_id' => $user->id]);
-        $category = Category::factory()->create();
-
-        $response = $this->actingAs($user)->post(route('seller.products.store'), [
-            'name' => 'Kopi Robusta Lampung',
-            'category_id' => $category->id,
-            'price' => 45000,
-            'stock' => 20,
-            'weight_grams' => 250,
-            'description' => 'Kopi robusta asli dari petani Lampung.',
-            'payment_methods_submitted' => '1',
-            'allowed_payment_methods' => ['transfer_bank'],
-        ]);
-
-        $response->assertSessionHasErrors(['allowed_payment_methods.0']);
-    }
-
-    public function test_seller_cannot_purchase_products_from_their_own_store(): void
-    {
-        $seller = User::factory()->create(['role' => 'seller']);
-        $store = Store::factory()->approved()->create(['user_id' => $seller->id]);
-        $product = Product::factory()->create([
-            'store_id' => $store->id,
-            'price' => 50000,
-            'stock' => 10,
-            'allowed_payment_methods' => ['qris', 'cod'],
-        ]);
-
-        $payload = [
-            'customer_name' => 'Owner Buyer',
-            'customer_phone' => '08123456789',
-            'customer_address' => 'Jl. Test No. 1',
-            'payment_method' => 'qris',
-            'items' => [
-                [
-                    'product_id' => $product->id,
-                    'quantity' => 1,
-                ],
-            ],
-        ];
-
-        $response = $this->actingAs($seller)->post(route('checkout'), $payload);
-
-        $response->assertSessionHasErrors(['items']);
-        $this->assertDatabaseMissing('orders', [
-            'user_id' => $seller->id,
-        ]);
-    }
-
-    public function test_product_detail_shows_own_product_indicator_for_seller(): void
-    {
-        $seller = User::factory()->create(['role' => 'seller']);
-        $store = Store::factory()->approved()->create(['user_id' => $seller->id]);
-        $product = Product::factory()->create([
-            'store_id' => $store->id,
-            'price' => 50000,
-            'stock' => 10,
-        ]);
-
-        $response = $this->actingAs($seller)->get(route('product.detail', $product->slug));
-
-        $response->assertStatus(200);
-        $response->assertSee('Ini adalah produk tokomu sendiri');
-
-        $otherUser = User::factory()->create();
-        $otherResponse = $this->actingAs($otherUser)->get(route('product.detail', $product->slug));
-        $otherResponse->assertStatus(200);
-        $otherResponse->assertDontSee('Ini adalah produk tokomu sendiri');
-        $otherResponse->assertSee('Beli Sekarang');
-    }
-
-    public function test_seller_can_create_and_update_product_with_free_shipping_and_voucher_settings(): void
-    {
-        $seller = User::factory()->create(['role' => 'seller']);
-        $store = Store::factory()->approved()->create(['user_id' => $seller->id]);
-        $category = Category::firstOrCreate(['slug' => 'camilan-asin'], ['name' => 'Camilan Asin']);
-
-        $payload = [
-            'category_id' => $category->id,
-            'name' => 'Keripik Singkong Bebas Ongkir',
-            'description' => 'Deskripsi keripik singkong gurih dan renyah khas Nusantara.',
-            'price' => 30000,
-            'stock' => 50,
-            'weight_grams' => 200,
-            'allowed_payment_methods' => ['qris', 'cod'],
-            'is_available' => 1,
-            'is_free_shipping' => 1,
-            'free_shipping_min_spend' => 50000,
-            'allow_vouchers' => 1,
-        ];
-
-        $response = $this->actingAs($seller)->post(route('seller.products.store'), $payload);
-        $response->assertRedirect(route('seller.products.index'));
-
-        $product = Product::where('name', 'Keripik Singkong Bebas Ongkir')->firstOrFail();
-        $this->assertTrue($product->is_free_shipping);
-        $this->assertEquals(50000, $product->free_shipping_min_spend);
-        $this->assertTrue($product->allow_vouchers);
-
-        // Update product to disable free shipping and vouchers
-        $updatePayload = array_merge($payload, [
-            'name' => 'Keripik Singkong Premium Updated',
-            'is_free_shipping' => 0,
-            'free_shipping_min_spend' => 0,
-            'allow_vouchers' => 0,
-        ]);
-
-        $updateResponse = $this->actingAs($seller)->put(route('seller.products.update', $product), $updatePayload);
-        $updateResponse->assertRedirect(route('seller.products.index'));
-
-        $product->refresh();
-        $this->assertFalse($product->is_free_shipping);
-        $this->assertEquals(0, $product->free_shipping_min_spend);
-        $this->assertFalse($product->allow_vouchers);
-    }
-
-    public function test_checkout_applies_free_shipping_when_product_has_free_shipping_configured(): void
-    {
-        $buyer = User::factory()->create();
-        $seller = User::factory()->create(['role' => 'seller']);
-        $store = Store::factory()->approved()->create(['user_id' => $seller->id]);
-
-        $freeShipProduct = Product::factory()->create([
-            'store_id' => $store->id,
-            'name' => 'Kue Kering Promo Bebas Ongkir',
-            'price' => 40000,
-            'discount_price' => null,
-            'stock' => 10,
-            'is_available' => true,
-            'is_free_shipping' => true,
-            'free_shipping_min_spend' => 0,
-            'allowed_payment_methods' => ['qris', 'cod'],
-        ]);
-
-        $payload = [
-            'customer_name' => 'Pembeli Cermat',
-            'customer_phone' => '08123456789',
-            'customer_address' => 'Jl. Merdeka No. 1, Jakarta',
-            'payment_method' => 'cod',
-            'items' => [
-                [
-                    'product_id' => $freeShipProduct->id,
-                    'quantity' => 1,
-                ],
-            ],
-        ];
-
-        $response = $this->actingAs($buyer)->post(route('checkout'), $payload);
-        $response->assertRedirect(route('my.orders'));
-
-        $order = Order::where('user_id', $buyer->id)->latest()->firstOrFail();
-        $this->assertEquals(0, $order->shipping_cost);
-        $this->assertEquals(40000, $order->grand_total);
-    }
-
-    public function test_checkout_rejects_discount_voucher_when_product_disallows_vouchers(): void
-    {
-        $buyer = User::factory()->create();
-        $seller = User::factory()->create(['role' => 'seller']);
-        $store = Store::factory()->approved()->create(['user_id' => $seller->id]);
-
-        Voucher::create([
-            'code' => 'DISKONMEMBER',
-            'name' => 'Diskon Khusus Member',
-            'category' => 'discount',
-            'type' => 'percentage',
-            'reward_amount' => 10,
-            'min_spend' => 20000,
-            'is_active' => true,
-            'start_date' => now()->subDay(),
-            'end_date' => now()->addMonth(),
-        ]);
-
-        $noVoucherProduct = Product::factory()->create([
-            'store_id' => $store->id,
-            'name' => 'Produk Tanpa Voucher',
-            'price' => 60000,
-            'discount_price' => null,
-            'stock' => 10,
-            'is_available' => true,
-            'allow_vouchers' => false,
-            'allowed_payment_methods' => ['qris', 'cod'],
-        ]);
-
-        $payload = [
-            'customer_name' => 'Pembeli Voucher',
-            'customer_phone' => '08123456789',
-            'customer_address' => 'Jl. Merdeka No. 10, Bandung',
-            'payment_method' => 'cod',
-            'discount_voucher_code' => 'DISKONMEMBER',
-            'items' => [
-                [
-                    'product_id' => $noVoucherProduct->id,
-                    'quantity' => 1,
-                ],
-            ],
-        ];
-
-        $response = $this->actingAs($buyer)->post(route('checkout'), $payload);
-        $response->assertSessionHasErrors('discount_voucher_code');
     }
 }

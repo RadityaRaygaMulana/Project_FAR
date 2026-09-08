@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\User;
 use Database\Seeders\MarketplaceSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -12,8 +11,6 @@ use Tests\TestCase;
 class DailyEssentialsTest extends TestCase
 {
     use RefreshDatabase;
-
-    protected User $user;
 
     protected Category $foodCategory;
 
@@ -31,8 +28,6 @@ class DailyEssentialsTest extends TestCase
     {
         parent::setUp();
         $this->seed(MarketplaceSeeder::class);
-
-        $this->user = User::factory()->create();
 
         $this->foodCategory = Category::firstOrCreate(
             ['slug' => 'makanan-minuman'],
@@ -82,7 +77,7 @@ class DailyEssentialsTest extends TestCase
 
     public function test_daily_essentials_page_loads_successfully_and_shows_food_and_health(): void
     {
-        $response = $this->actingAs($this->user)->get(route('kebutuhan.pokok'));
+        $response = $this->get(route('kebutuhan.pokok'));
 
         $response->assertStatus(200);
         $response->assertSee('Kebutuhan Pokok & Kesehatan Keluarga', false);
@@ -94,7 +89,7 @@ class DailyEssentialsTest extends TestCase
 
     public function test_daily_essentials_filters_by_specific_category(): void
     {
-        $response = $this->actingAs($this->user)->get(route('kebutuhan.pokok', ['category' => 'makanan-minuman']));
+        $response = $this->get(route('kebutuhan.pokok', ['category' => 'makanan-minuman']));
 
         $response->assertStatus(200);
         $response->assertSee('Beras Organik Premium 5kg');
@@ -103,7 +98,7 @@ class DailyEssentialsTest extends TestCase
 
     public function test_daily_essentials_filters_by_discount_only(): void
     {
-        $response = $this->actingAs($this->user)->get(route('kebutuhan.pokok', ['only_discount' => '1']));
+        $response = $this->get(route('kebutuhan.pokok', ['only_discount' => '1']));
 
         $response->assertStatus(200);
         $response->assertSee('Beras Organik Premium 5kg');
@@ -112,7 +107,7 @@ class DailyEssentialsTest extends TestCase
 
     public function test_daily_essentials_ajax_request_returns_json_without_page_refresh(): void
     {
-        $response = $this->actingAs($this->user)->getJson(route('kebutuhan.pokok', ['category' => 'kesehatan-vitamin']), [
+        $response = $this->getJson(route('kebutuhan.pokok', ['category' => 'kesehatan-vitamin']), [
             'X-Requested-With' => 'XMLHttpRequest',
         ]);
 

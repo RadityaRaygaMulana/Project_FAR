@@ -15,14 +15,10 @@ class HomeControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected User $user;
-
     protected function setUp(): void
     {
         parent::setUp();
         $this->seed(MarketplaceSeeder::class);
-
-        $this->user = User::factory()->create();
 
         $elektronik = Category::where('slug', 'elektronik-gadget')->first();
         $fashion = Category::where('slug', 'fashion-pakaian')->first();
@@ -72,7 +68,7 @@ class HomeControllerTest extends TestCase
 
     public function test_search_discovery_page_loads_with_recommendations(): void
     {
-        $response = $this->actingAs($this->user)->get(route('search'));
+        $response = $this->get(route('search'));
 
         $response->assertStatus(200);
         $response->assertSee('Pencarian & Eksplorasi');
@@ -82,7 +78,7 @@ class HomeControllerTest extends TestCase
 
     public function test_search_results_page_loads_with_filters_and_products(): void
     {
-        $response = $this->actingAs($this->user)->get(route('search.results', ['q' => 'TWS']));
+        $response = $this->get(route('search.results', ['q' => 'TWS']));
 
         $response->assertStatus(200);
         $response->assertSee('Hasil pencarian untuk');
@@ -143,7 +139,7 @@ class HomeControllerTest extends TestCase
             'subtotal' => $product->effective_price,
         ]);
 
-        $response = $this->actingAs($this->user)->get(route('order.detail', ['order_code' => $order->order_code]));
+        $response = $this->get(route('order.detail', ['order_code' => $order->order_code]));
 
         $response->assertStatus(200);
         $response->assertSee($order->order_code);
@@ -153,7 +149,7 @@ class HomeControllerTest extends TestCase
 
     public function test_cart_page_can_be_rendered(): void
     {
-        $response = $this->actingAs($this->user)->get(route('cart'));
+        $response = $this->get(route('cart'));
 
         $response->assertStatus(200);
         $response->assertSee('Keranjang Belanja Kamu');
@@ -168,7 +164,7 @@ class HomeControllerTest extends TestCase
             'customer_name' => 'Budi Santoso',
             'customer_phone' => '081234567890',
             'customer_address' => 'Jl. Merdeka No. 10, Bandung',
-            'payment_method' => 'cod',
+            'payment_method' => 'bca_va',
             'coupon_code' => 'SNACKSERU',
             'items' => [
                 [
@@ -242,60 +238,6 @@ class HomeControllerTest extends TestCase
         $this->assertEquals('unpaid', $order->payment_status);
         $response->assertSessionHas('success');
         $this->assertStringContainsString('Bayar di Tempat (COD)', session('success'));
-    }
-
-    public function test_checkout_fails_when_product_does_not_allow_selected_payment_method(): void
-    {
-        $user = User::factory()->create();
-        $product = Product::factory()->create([
-            'price' => 35000,
-            'stock' => 10,
-            'allowed_payment_methods' => ['qris'],
-        ]);
-
-        $payload = [
-            'customer_name' => 'Gerry Pratama',
-            'customer_phone' => '085139132952',
-            'customer_address' => 'Jl. Mawar No. 12, Bandung',
-            'payment_method' => 'cod',
-            'items' => [
-                [
-                    'product_id' => $product->id,
-                    'quantity' => 1,
-                ],
-            ],
-        ];
-
-        $response = $this->actingAs($user)->post(route('checkout'), $payload);
-
-        $response->assertSessionHasErrors(['payment_method']);
-    }
-
-    public function test_checkout_rejects_transfer_bank_and_unsupported_payment_methods(): void
-    {
-        $user = User::factory()->create();
-        $product = Product::factory()->create([
-            'price' => 35000,
-            'stock' => 10,
-            'allowed_payment_methods' => ['qris', 'cod'],
-        ]);
-
-        $payload = [
-            'customer_name' => 'Gerry Pratama',
-            'customer_phone' => '085139132952',
-            'customer_address' => 'Jl. Mawar No. 12, Bandung',
-            'payment_method' => 'transfer_bank',
-            'items' => [
-                [
-                    'product_id' => $product->id,
-                    'quantity' => 1,
-                ],
-            ],
-        ];
-
-        $response = $this->actingAs($user)->post(route('checkout'), $payload);
-
-        $response->assertSessionHasErrors(['payment_method']);
     }
 
     public function test_checkout_with_product_variant_decrements_variant_stock(): void
@@ -399,7 +341,7 @@ class HomeControllerTest extends TestCase
 
     public function test_search_suggestions_endpoint_returns_json_matches(): void
     {
-        $response = $this->actingAs($this->user)->getJson(route('search.suggestions', ['q' => 'TWS']));
+        $response = $this->getJson(route('search.suggestions', ['q' => 'TWS']));
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
@@ -416,7 +358,7 @@ class HomeControllerTest extends TestCase
     {
         $product = Product::firstOrFail();
 
-        $response = $this->actingAs($this->user)->get(route('product.detail', $product->slug));
+        $response = $this->get(route('product.detail', $product->slug));
 
         $response->assertStatus(200);
         $response->assertSee('Kembali');
@@ -425,17 +367,13 @@ class HomeControllerTest extends TestCase
         $response->assertSee('Deskripsi & Informasi Lengkap Produk', false);
         $response->assertSee('+ Keranjang');
         $response->assertSee('Beli Sekarang');
-
-        $byIdResponse = $this->actingAs($this->user)->get('/product/'.$product->id);
-        $byIdResponse->assertStatus(200);
-        $byIdResponse->assertSee($product->name);
     }
 
     public function test_seller_store_page_loads_with_profile_and_catalog(): void
     {
         $product = Product::whereNotNull('brand')->where('brand', '!=', '')->firstOrFail();
 
-        $response = $this->actingAs($this->user)->get(route('store.show', urlencode($product->brand)));
+        $response = $this->get(route('store.show', urlencode($product->brand)));
 
         $response->assertStatus(200);
         $response->assertSee($product->brand);
@@ -446,7 +384,7 @@ class HomeControllerTest extends TestCase
 
     public function test_official_brand_page_renders_successfully(): void
     {
-        $response = $this->actingAs($this->user)->get(route('official.brand'));
+        $response = $this->get(route('official.brand'));
 
         $response->assertStatus(200);
         $response->assertSee('Official Brand & Store');
@@ -455,14 +393,14 @@ class HomeControllerTest extends TestCase
 
     public function test_search_results_with_badge_official_redirects_to_official_brand(): void
     {
-        $response = $this->actingAs($this->user)->get(route('search.results', ['badge' => 'Official']));
+        $response = $this->get(route('search.results', ['badge' => 'Official']));
 
         $response->assertRedirect(route('official.brand'));
     }
 
     public function test_trending_products_page_renders_successfully(): void
     {
-        $response = $this->actingAs($this->user)->get(route('products.trending'));
+        $response = $this->get(route('products.trending'));
 
         $response->assertStatus(200);
         $response->assertSee('Produk Trending');
@@ -471,14 +409,14 @@ class HomeControllerTest extends TestCase
 
     public function test_search_results_with_sort_popular_redirects_to_trending(): void
     {
-        $response = $this->actingAs($this->user)->get(route('search.results', ['sort' => 'popular']));
+        $response = $this->get(route('search.results', ['sort' => 'popular']));
 
         $response->assertRedirect(route('products.trending'));
     }
 
     public function test_topup_bills_page_renders_successfully(): void
     {
-        $response = $this->actingAs($this->user)->get(route('topup.bills'));
+        $response = $this->get(route('topup.bills'));
 
         $response->assertStatus(200);
         $response->assertSee('Top Up & Tagihan', false);
@@ -502,7 +440,7 @@ class HomeControllerTest extends TestCase
             'payment_method' => 'qris',
         ];
 
-        $response = $this->actingAs($this->user)->post(route('topup.checkout'), $payload);
+        $response = $this->post(route('topup.checkout'), $payload);
 
         $response->assertRedirect(route('topup.bills'));
         $response->assertSessionHas('topup_success');
@@ -539,85 +477,5 @@ class HomeControllerTest extends TestCase
         $myOrdersResponse->assertStatus(200);
         $myOrdersResponse->assertSee($order->order_code);
         $myOrdersResponse->assertSee('Pulsa Telkomsel');
-    }
-
-    public function test_topup_bills_page_renders_qris_only_and_does_not_contain_cod(): void
-    {
-        $response = $this->actingAs($this->user)->get(route('topup.bills'));
-        $response->assertOk();
-        $response->assertSee('QRIS Instant');
-        $response->assertDontSee('COD (Bayar Tunai)');
-        $response->assertDontSee('Bebas Biaya Admin');
-        $response->assertDontSee('Layanan produk digital & tagihan diproses');
-    }
-
-    public function test_topup_checkout_fails_when_payment_method_is_not_qris(): void
-    {
-        $payload = [
-            'service_type' => 'pulsa',
-            'customer_number' => '081234567890',
-            'provider' => 'Telkomsel',
-            'product_name' => 'Pulsa Telkomsel Rp 25.000',
-            'amount' => 25000,
-            'admin_fee' => 1500,
-            'payment_method' => 'cod',
-        ];
-
-        $response = $this->actingAs($this->user)->post(route('topup.checkout'), $payload);
-        $response->assertSessionHasErrors('payment_method');
-    }
-
-    public function test_cart_page_renders_shopee_style_store_grouping_and_variant_changer(): void
-    {
-        $response = $this->actingAs($this->user)->get(route('cart'));
-        $response->assertOk();
-        $response->assertSee('Keranjang Belanja Kamu');
-        $response->assertSee('storeGroups');
-        $response->assertSee('openVariantModal');
-        $response->assertSee('toggleStoreSelect');
-    }
-
-    public function test_api_products_variants_returns_json_with_variants_and_store_info(): void
-    {
-        $product = Product::factory()->create([
-            'name' => 'Produk Tes Varian',
-            'price' => 50000,
-            'discount_price' => 45000,
-        ]);
-
-        $variant1 = ProductVariant::create([
-            'product_id' => $product->id,
-            'name' => 'Warna Merah',
-            'price' => 45000,
-            'stock' => 15,
-        ]);
-
-        $variant2 = ProductVariant::create([
-            'product_id' => $product->id,
-            'name' => 'Warna Biru',
-            'price' => 48000,
-            'stock' => 20,
-        ]);
-
-        $response = $this->actingAs($this->user)->getJson(route('api.products.variants', $product));
-        $response->assertOk();
-        $response->assertJsonStructure([
-            'product_id',
-            'product_name',
-            'base_price',
-            'base_image',
-            'store' => ['id', 'name', 'slug', 'badge', 'city'],
-            'variants' => [
-                '*' => ['id', 'name', 'price', 'stock', 'image_url'],
-            ],
-        ]);
-        $response->assertJsonFragment([
-            'name' => 'Warna Merah',
-            'price' => 45000,
-        ]);
-        $response->assertJsonFragment([
-            'name' => 'Warna Biru',
-            'price' => 48000,
-        ]);
     }
 }

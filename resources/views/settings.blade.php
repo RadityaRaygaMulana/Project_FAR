@@ -67,18 +67,6 @@
             </div>
         @endif
 
-        @if(session('delete_error'))
-            <div x-data="{ show: true }" 
-                 x-show="show" 
-                 class="overflow-hidden mb-4 p-3.5 bg-rose-50 rounded-2xl border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between shadow-[0_2px_8px_rgba(225,29,72,0.08)]">
-                <div class="flex items-center gap-2.5">
-                    <span class="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold">✕</span>
-                    <span>{{ session('delete_error') }}</span>
-                </div>
-                <button type="button" @click="show = false" class="text-rose-400 hover:text-rose-700 font-bold p-1 cursor-pointer">✕</button>
-            </div>
-        @endif
-
         <!-- ======================================================== -->
         <!-- 1. MAIN iOS SETTINGS MENU VIEW -->
         <div x-show="currentView === 'menu'" x-cloak class="space-y-4">
@@ -381,84 +369,65 @@
                 </div>
             </div>
 
-            <!-- GROUP 3: LAYANAN & BANTUAN TRANSAKSI -->
+            <!-- GROUP 3: PEMBERITAHUAN & PREFERENSI -->
             <div class="pt-2">
                 <p class="text-[13px] uppercase font-normal text-[#6D6D72] tracking-normal px-4 mb-1.5">
-                    Layanan & Bantuan
+                    Pemberitahuan & Bantuan
                 </p>
                 <div class="bg-white rounded-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-black/[0.04] overflow-hidden divide-y divide-[#E5E5EA]">
                     
-                    <!-- Row 1: Chat Toko & Penjual -->
-                    <a href="{{ route('chat.index') }}" 
-                       class="flex items-center justify-between gap-3 p-3 pl-3.5 hover:bg-[#F2F2F7]/70 active:bg-[#E5E5EA] transition group">
+                    <!-- Row 1: Notifikasi Promo -->
+                    <button type="button" 
+                            @click="currentView = 'notifications'" 
+                            class="w-full flex items-center justify-between gap-3 p-3 pl-3.5 hover:bg-[#F2F2F7]/70 active:bg-[#E5E5EA] transition group text-left cursor-pointer">
                         <div class="flex items-center gap-3">
-                            <div class="w-[30px] h-[30px] rounded-[7px] bg-[#007AFF] text-white flex items-center justify-center text-sm shadow-[0_1px_2px_rgba(0,0,0,0.12)]">
-                                💬
+                            <div class="w-[30px] h-[30px] rounded-[7px] bg-[#FF2D55] text-white flex items-center justify-center text-sm shadow-[0_1px_2px_rgba(0,0,0,0.12)]">
+                                🔔
                             </div>
-                            <div>
-                                <span class="text-[15px] font-normal text-[#000000] block">Pesan & Obrolan Toko</span>
-                                <span class="text-[12px] text-[#8E8E93] block">Konsultasi produk langsung dengan penjual</span>
-                            </div>
+                            <span class="text-[15px] font-normal text-[#000000]">Pemberitahuan & Promo</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="text-[14px] text-[#007AFF] font-medium">Buka Chat</span>
-                            <svg class="w-3.5 h-3.5 text-[#C7C7CC] group-hover:text-[#007AFF] transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <span class="text-[14px] text-[#8E8E93]">Aktif</span>
+                            <svg class="w-3.5 h-3.5 text-[#C7C7CC]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </div>
+                    </button>
+
+                    <!-- Row 2: WhatsApp CS -->
+                    <a href="https://wa.me/6281234567890?text=Halo%20NusantaraMart%20mau%20tanya%20bantuan" 
+                       target="_blank"
+                       class="flex items-center justify-between gap-3 p-3 pl-3.5 hover:bg-[#F2F2F7]/70 active:bg-[#E5E5EA] transition group">
+                        <div class="flex items-center gap-3">
+                            <div class="w-[30px] h-[30px] rounded-[7px] bg-[#25D366] text-white flex items-center justify-center text-sm shadow-[0_1px_2px_rgba(0,0,0,0.12)]">
+                                💬
+                            </div>
+                            <span class="text-[15px] font-normal text-[#000000]">Bantuan CS WhatsApp 24/7</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[14px] text-[#34C759] font-medium">Online</span>
+                            <svg class="w-3.5 h-3.5 text-[#C7C7CC]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
                             </svg>
                         </div>
                     </a>
 
-                    <!-- Row 2: Voucher & Cek Kode Promo -->
-                    <button type="button" 
-                            @click="currentView = 'vouchers'" 
-                            class="w-full flex items-center justify-between gap-3 p-3 pl-3.5 hover:bg-[#F2F2F7]/70 active:bg-[#E5E5EA] transition group text-left cursor-pointer">
+                    <!-- Row 3: Versi -->
+                    <div class="flex items-center justify-between gap-3 p-3 pl-3.5">
                         <div class="flex items-center gap-3">
-                            <div class="w-[30px] h-[30px] rounded-[7px] bg-[#FF9500] text-white flex items-center justify-center text-sm shadow-[0_1px_2px_rgba(0,0,0,0.12)]">
-                                🎟️
+                            <div class="w-[30px] h-[30px] rounded-[7px] bg-[#8E8E93] text-white flex items-center justify-center text-sm shadow-[0_1px_2px_rgba(0,0,0,0.12)]">
+                                ℹ️
                             </div>
-                            <div>
-                                <span class="text-[15px] font-normal text-[#000000] block">Voucher & Kode Promo</span>
-                                <span class="text-[12px] text-[#8E8E93] block">Cek dan tukarkan voucher diskon belanja</span>
-                            </div>
+                            <span class="text-[15px] font-normal text-[#000000]">Versi Aplikasi</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-[14px] text-[#8E8E93]">Tukar Kode</span>
-                            <svg class="w-3.5 h-3.5 text-[#C7C7CC]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </div>
-                    </button>
-
-                    <!-- Row 3: Status Akun & Pusat Bantuan Resolusi -->
-                    <button type="button" 
-                            @click="currentView = 'support'" 
-                            class="w-full flex items-center justify-between gap-3 p-3 pl-3.5 hover:bg-[#F2F2F7]/70 active:bg-[#E5E5EA] transition group text-left cursor-pointer">
-                        <div class="flex items-center gap-3">
-                            <div class="w-[30px] h-[30px] rounded-[7px] bg-[#34C759] text-white flex items-center justify-center text-sm shadow-[0_1px_2px_rgba(0,0,0,0.12)]">
-                                🛡️
-                            </div>
-                            <div>
-                                <span class="text-[15px] font-normal text-[#000000] block">Status Akun & Pusat Resolusi</span>
-                                <span class="text-[12px] text-[#8E8E93] block">Kesehatan akun, panduan komplain & retur</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            @if($user->is_suspended)
-                                <span class="text-[12px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">Dibatasi</span>
-                            @else
-                                <span class="text-[12px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Normal</span>
-                            @endif
-                            <svg class="w-3.5 h-3.5 text-[#C7C7CC]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </div>
-                    </button>
+                        <span class="text-[14px] text-[#8E8E93]">NusantaraMart 2.4.0</span>
+                    </div>
 
                 </div>
             </div>
 
             <!-- GROUP 4: LOGOUT (iOS Style Red Button Card) -->
-            <div class="pt-2">
+            <div class="pt-2 pb-12">
                 <div class="bg-white rounded-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-black/[0.04] overflow-hidden">
                     <form action="{{ route('logout') }}" method="POST" onsubmit="if(typeof handleLogoutCart==='function') handleLogoutCart();">
                         @csrf
@@ -467,59 +436,6 @@
                             Keluar dari Akun
                         </button>
                     </form>
-                </div>
-            </div>
-
-            <!-- GROUP 5: ZONA BAHAYA (HAPUS AKUN & PENGELOLAAN TOKO) -->
-            <div class="pt-2 pb-12">
-                <p class="text-[13px] uppercase font-normal text-[#8E8E93] tracking-normal px-4 mb-1.5">
-                    Zona Bahaya
-                </p>
-                <div class="bg-white rounded-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-rose-100 overflow-hidden divide-y divide-[#E5E5EA]">
-                    
-                    @if($user->store)
-                        <!-- Tutup / Kelola Status Toko -->
-                        <a href="{{ route('seller.settings') }}" 
-                           class="w-full flex items-center justify-between gap-3 p-3.5 hover:bg-amber-50/50 active:bg-amber-100/50 transition group text-left cursor-pointer">
-                            <div class="flex items-center gap-3">
-                                <div class="w-[30px] h-[30px] rounded-[7px] bg-amber-500 text-white flex items-center justify-center text-sm shadow-[0_1px_2px_rgba(0,0,0,0.12)] shrink-0">
-                                    🏪
-                                </div>
-                                <div class="min-w-0">
-                                    <span class="text-[15px] font-medium text-stone-800 block truncate">Status & Penutupan Toko</span>
-                                    <span class="text-[12px] text-stone-500 block">Status saat ini: <strong class="{{ $user->store->isClosed() ? 'text-amber-600' : 'text-emerald-600' }}">{{ $user->store->isClosed() ? 'Tutup Sementara (Mode Libur)' : ($user->store->isApproved() ? 'Buka & Aktif' : ucfirst($user->store->status)) }}</strong></span>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2 shrink-0">
-                                <span class="text-[13px] text-amber-700 font-medium">Kelola</span>
-                                <svg class="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
-                                </svg>
-                            </div>
-                        </a>
-                    @endif
-
-                    <!-- Hapus Akun Sendiri -->
-                    <button type="button" 
-                            @click="deleteAccountModalOpen = true" 
-                            class="w-full flex items-center justify-between gap-3 p-3.5 hover:bg-rose-50 active:bg-rose-100 transition group text-left cursor-pointer">
-                        <div class="flex items-center gap-3">
-                            <div class="w-[30px] h-[30px] rounded-[7px] bg-rose-600 text-white flex items-center justify-center text-sm shadow-[0_1px_2px_rgba(0,0,0,0.12)] shrink-0">
-                                🗑️
-                            </div>
-                            <div class="min-w-0">
-                                <span class="text-[15px] font-medium text-rose-600 block">Hapus Akun Pengguna</span>
-                                <span class="text-[12px] text-stone-500 block truncate">Hapus akun, riwayat, dan profil secara permanen</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            <span class="text-[13px] text-rose-600 font-semibold">Hapus Akun</span>
-                            <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </div>
-                    </button>
-
                 </div>
             </div>
 
@@ -1111,9 +1027,9 @@
         </div>
 
         <!-- ======================================================== -->
-        <!-- 5. SUB-VIEW: VOUCHER & TUKAR KODE PROMO -->
+        <!-- 5. SUB-VIEW: PEMBERITAHUAN & PROMO -->
         <!-- ======================================================== -->
-        <div x-show="currentView === 'vouchers'" x-cloak class="space-y-4">
+        <div x-show="currentView === 'notifications'" x-cloak class="space-y-4">
             
             <!-- Header with Inline Circular Back Button -->
             <div class="flex items-center gap-3 pt-1 pb-1">
@@ -1127,208 +1043,67 @@
                 </button>
                 <div>
                     <h1 class="text-[24px] sm:text-[28px] font-bold text-[#000000] tracking-tight leading-tight">
-                        Voucher & Kode Promo
+                        Pemberitahuan & Promo
                     </h1>
-                    <p class="text-xs text-[#8E8E93]">Cek Keabsahan & Potongan Kupon Belanja</p>
+                    <p class="text-xs text-[#8E8E93]">Preferensi Notifikasi Akun</p>
                 </div>
             </div>
 
-            <!-- Input & Check Box -->
-            <div class="bg-white rounded-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-black/[0.04] p-4 sm:p-5 space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Masukkan Kode Promo / Voucher
-                    </label>
-                    <div class="flex items-center gap-2">
-                        <div class="relative flex-1">
-                            <span class="absolute left-3.5 top-3 text-slate-400 text-sm">🎟️</span>
-                            <input type="text" 
-                                   x-model="redeemInput"
-                                   @keydown.enter.prevent="checkRedeemCode()"
-                                   placeholder="Contoh: MERDEKA50, DISKON10" 
-                                   class="w-full pl-9 pr-3 py-2.5 text-sm uppercase font-mono font-bold tracking-wider border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6B4226]/30 focus:border-[#6B4226] bg-slate-50 transition">
+            <div>
+                <p class="text-[13px] uppercase font-normal text-[#6D6D72] tracking-normal px-4 mb-1.5">
+                    Notifikasi Aplikasi
+                </p>
+                <div class="bg-white rounded-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-black/[0.04] overflow-hidden divide-y divide-[#E5E5EA]">
+                    
+                    <!-- Toggle 1: Promo -->
+                    <div class="flex items-center justify-between p-3.5 pl-4 gap-4">
+                        <div>
+                            <p class="text-[15px] font-normal text-[#000000]">Promo & Diskon Kilat</p>
+                            <p class="text-[12px] text-[#8E8E93]">Info diskon s.d 80% dan voucher eksklusif.</p>
                         </div>
+                        <!-- iOS 51x31 Switch Toggle -->
                         <button type="button" 
-                                @click="checkRedeemCode()"
-                                :disabled="redeemLoading || !redeemInput.trim()"
-                                class="px-4 py-2.5 bg-[#6B4226] hover:bg-[#54321B] disabled:opacity-50 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-xs active:scale-95 shrink-0 flex items-center gap-1.5">
-                            <span x-show="!redeemLoading">Periksa</span>
-                            <span x-show="redeemLoading" x-cloak class="inline-block animate-spin">⏳</span>
+                                @click="notifPromo = !notifPromo"
+                                :class="notifPromo ? 'bg-[#34C759]' : 'bg-[#E5E5EA]'"
+                                class="relative inline-flex h-[31px] w-[51px] shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none">
+                            <span :class="notifPromo ? 'translate-x-[20px]' : 'translate-x-0'"
+                                  class="pointer-events-none inline-block h-[27px] w-[27px] transform rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.2)] transition duration-200 ease-in-out"></span>
                         </button>
                     </div>
-                </div>
 
-                <!-- Result Box -->
-                <template x-if="redeemResult">
-                    <div class="pt-1">
-                        <!-- Success Card -->
-                        <template x-if="redeemResult.success">
-                            <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2.5">
-                                <div class="flex items-center justify-between">
-                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white">
-                                        VOUCHER VALID
-                                    </span>
-                                    <span class="font-mono text-xs font-black text-emerald-900" x-text="redeemResult.code"></span>
-                                </div>
-                                <div>
-                                    <h3 class="text-sm font-black text-emerald-950" x-text="redeemResult.name"></h3>
-                                    <p class="text-xs text-emerald-800 font-semibold mt-0.5" x-text="redeemResult.formatted_discount"></p>
-                                </div>
-                                <div class="pt-2 border-t border-emerald-200/60 flex items-center justify-between text-[11px] text-emerald-800">
-                                    <span>Min. Belanja: <strong x-text="'Rp ' + Number(redeemResult.min_spend).toLocaleString('id-ID')"></strong></span>
-                                    <a href="{{ route('checkout.show') }}" class="text-[#6B4226] font-bold hover:underline">Gunakan di Checkout →</a>
-                                </div>
-                            </div>
-                        </template>
-
-                        <!-- Error Card -->
-                        <template x-if="!redeemResult.success">
-                            <div class="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-xs text-rose-900">
-                                <span class="text-sm shrink-0">⚠️</span>
-                                <span class="font-medium" x-text="redeemResult.message"></span>
-                            </div>
-                        </template>
-                    </div>
-                </template>
-            </div>
-
-            <!-- Panduan Penggunaan Voucher -->
-            <div class="bg-white rounded-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-black/[0.04] p-4 sm:p-5 space-y-3">
-                <h3 class="text-xs font-black uppercase tracking-wider text-[#6B4226]">Cara Menggunakan Voucher</h3>
-                <div class="space-y-2 text-xs text-slate-600 leading-relaxed">
-                    <div class="flex items-start gap-2">
-                        <span class="w-5 h-5 rounded-full bg-[#FAF4ED] text-[#6B4226] font-bold flex items-center justify-center shrink-0 text-[11px]">1</span>
-                        <span>Pilih produk favorit kamu dan masukkan ke dalam keranjang belanja.</span>
-                    </div>
-                    <div class="flex items-start gap-2">
-                        <span class="w-5 h-5 rounded-full bg-[#FAF4ED] text-[#6B4226] font-bold flex items-center justify-center shrink-0 text-[11px]">2</span>
-                        <span>Buka halaman checkout dan masukkan kode voucher yang valid pada kolom voucher promosi.</span>
-                    </div>
-                    <div class="flex items-start gap-2">
-                        <span class="w-5 h-5 rounded-full bg-[#FAF4ED] text-[#6B4226] font-bold flex items-center justify-center shrink-0 text-[11px]">3</span>
-                        <span>Total pembayaran akan otomatis terpotong sesuai nilai diskon yang tertera.</span>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- ======================================================== -->
-        <!-- 6. SUB-VIEW: STATUS AKUN & PUSAT RESOLUSI -->
-        <!-- ======================================================== -->
-        <div x-show="currentView === 'support'" x-cloak class="space-y-4">
-            
-            <!-- Header with Inline Circular Back Button -->
-            <div class="flex items-center gap-3 pt-1 pb-1">
-                <button type="button" 
-                        @click="currentView = 'menu'" 
-                        class="w-11 h-11 rounded-full bg-white hover:bg-[#FAF4ED] active:bg-[#F5EBE1] text-[#6B4226] hover:text-[#54321B] border border-[#EAE1D7] hover:border-[#6B4226]/40 shadow-[0_2px_8px_rgba(107,66,38,0.08)] hover:shadow-[0_4px_14px_rgba(107,66,38,0.16)] flex items-center justify-center transition-all duration-200 group active:scale-95 cursor-pointer shrink-0"
-                        title="Kembali">
-                    <svg class="w-5.5 h-5.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
-                    </svg>
-                </button>
-                <div>
-                    <h1 class="text-[24px] sm:text-[28px] font-bold text-[#000000] tracking-tight leading-tight">
-                        Status Akun & Resolusi
-                    </h1>
-                    <p class="text-xs text-[#8E8E93]">Pemeriksaan Kesehatan Akun & Bantuan Belanja</p>
-                </div>
-            </div>
-
-            <!-- Card 1: Status Kesehatan Akun -->
-            <div class="bg-white rounded-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-black/[0.04] p-4 sm:p-5 space-y-3">
-                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
-                    <span class="text-xs font-black uppercase tracking-wider text-slate-700">Kesehatan Akun</span>
-                    @if($user->is_suspended)
-                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-200">
-                            🚫 Dibatasi / Ditangguhkan
-                        </span>
-                    @else
-                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span>Normal & Aktif</span>
-                        </span>
-                    @endif
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                        <span class="text-[11px] text-slate-400 font-semibold block">Email Terdaftar</span>
-                        <p class="text-xs font-bold text-slate-800 mt-0.5 truncate">{{ $user->email }}</p>
-                        <span class="text-[10px] font-bold text-emerald-600 mt-1 inline-block">
-                            {{ $user->email_verified_at ? '✓ Terverifikasi' : '⚠️ Belum Verifikasi' }}
-                        </span>
-                    </div>
-
-                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                        <span class="text-[11px] text-slate-400 font-semibold block">Keamanan Kata Sandi</span>
-                        <p class="text-xs font-bold text-slate-800 mt-0.5">Terenkripsi Kuat</p>
-                        <button type="button" @click="currentView = 'security'" class="text-[10px] font-bold text-[#007AFF] hover:underline mt-1 inline-block">
-                            Ubah Sandi →
+                    <!-- Toggle 2: Shipment -->
+                    <div class="flex items-center justify-between p-3.5 pl-4 gap-4">
+                        <div>
+                            <p class="text-[15px] font-normal text-[#000000]">Update Pengiriman Kurir</p>
+                            <p class="text-[12px] text-[#8E8E93]">Informasi nomor resi dan tracking lokasi kurir.</p>
+                        </div>
+                        <!-- iOS 51x31 Switch Toggle -->
+                        <button type="button" 
+                                @click="notifShipment = !notifShipment"
+                                :class="notifShipment ? 'bg-[#34C759]' : 'bg-[#E5E5EA]'"
+                                class="relative inline-flex h-[31px] w-[51px] shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none">
+                            <span :class="notifShipment ? 'translate-x-[20px]' : 'translate-x-0'"
+                                  class="pointer-events-none inline-block h-[27px] w-[27px] transform rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.2)] transition duration-200 ease-in-out"></span>
                         </button>
                     </div>
+
+                    <!-- Toggle 3: Voucher Gratis Ongkir -->
+                    <div class="flex items-center justify-between p-3.5 pl-4 gap-4">
+                        <div>
+                            <p class="text-[15px] font-normal text-[#000000]">Voucher Gratis Ongkir</p>
+                            <p class="text-[12px] text-[#8E8E93]">Klaim kupon potongan ongkir mingguan.</p>
+                        </div>
+                        <!-- iOS 51x31 Switch Toggle -->
+                        <button type="button" 
+                                @click="notifVoucher = !notifVoucher"
+                                :class="notifVoucher ? 'bg-[#34C759]' : 'bg-[#E5E5EA]'"
+                                class="relative inline-flex h-[31px] w-[51px] shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none">
+                            <span :class="notifVoucher ? 'translate-x-[20px]' : 'translate-x-0'"
+                                  class="pointer-events-none inline-block h-[27px] w-[27px] transform rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.2)] transition duration-200 ease-in-out"></span>
+                        </button>
+                    </div>
+
                 </div>
-
-                @if($user->is_suspended)
-                    <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 space-y-1">
-                        <p class="font-black">Alasan Pembatasan Akun:</p>
-                        <p class="italic">"{{ $user->suspension_reason }}"</p>
-                    </div>
-                @endif
-            </div>
-
-            <!-- Card 2: Panduan & Solusi Kendala Belanja -->
-            <div class="bg-white rounded-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-black/[0.04] p-4 sm:p-5 space-y-3.5">
-                <h3 class="text-xs font-black uppercase tracking-wider text-[#6B4226]">Pusat Panduan & Solusi Kendala</h3>
-
-                <div class="space-y-3 text-xs text-slate-700">
-                    <div class="p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE1D7] space-y-1">
-                        <h4 class="font-bold text-slate-900 flex items-center gap-1.5">
-                            <span>📦</span>
-                            <span>Cara Mengajukan Retur / Pengembalian Barang</span>
-                        </h4>
-                        <p class="text-slate-600 leading-relaxed">
-                            Bila barang pesanan tidak sesuai, rusak, atau salah varian, buka halaman <strong>Pesanan Saya</strong>, pilih pesanan terkait, dan klik tombol <em>Ajukan Pengembalian</em> maksimal 2x24 jam setelah paket diterima.
-                        </p>
-                        <a href="{{ route('my.orders') }}" class="text-[11px] font-bold text-[#6B4226] hover:underline inline-block pt-1">
-                            Buka Pesanan Saya →
-                        </a>
-                    </div>
-
-                    <div class="p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE1D7] space-y-1">
-                        <h4 class="font-bold text-slate-900 flex items-center gap-1.5">
-                            <span>🛡️</span>
-                            <span>Jaminan Perlindungan Transaksi Pembeli</span>
-                        </h4>
-                        <p class="text-slate-600 leading-relaxed">
-                            Seluruh dana pembayaran kamu aman dalam rekening bersama resmi NusantaraMart hingga pesanan sampai dengan selamat dan kamu konfirmasi kelengkapannya.
-                        </p>
-                    </div>
-
-                    <div class="p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE1D7] space-y-1">
-                        <h4 class="font-bold text-slate-900 flex items-center gap-1.5">
-                            <span>⚖️</span>
-                            <span>Prosedur Pengajuan Banding Akun / Toko</span>
-                        </h4>
-                        <p class="text-slate-600 leading-relaxed">
-                            Jika akun atau toko mitra kamu mengalami kendala sanksi atau pembatasan, kamu dapat mengajukan banding resmi langsung melalui formulir banding yang tersedia di halaman login saat mengakses akun.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card 3: Kontak Layanan Pengaduan Resmi -->
-            <div class="bg-white rounded-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-black/[0.04] p-4 sm:p-5 flex items-center justify-between gap-3">
-                <div>
-                    <h3 class="text-xs font-black uppercase tracking-wider text-slate-900">Butuh Bantuan Langsung?</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Diskusikan pertanyaan seputar pesanan langsung dengan penjual melalui fitur chat.</p>
-                </div>
-                <a href="{{ route('chat.index') }}" 
-                   class="px-3.5 py-2 bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-bold rounded-xl transition shadow-xs shrink-0 flex items-center gap-1.5 active:scale-95">
-                    <span>💬</span>
-                    <span>Chat Sekarang</span>
-                </a>
             </div>
 
         </div>
@@ -1613,88 +1388,6 @@
 
         </div>
 
-    </div>
-
-    {{-- MODAL HAPUS AKUN PENGGUNA --}}
-    <div x-show="deleteAccountModalOpen" 
-         x-cloak 
-         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0">
-
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-5 border border-stone-100"
-             @click.away="deleteAccountModalOpen = false"
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 scale-95"
-             x-transition:enter-end="opacity-100 scale-100">
-
-            <!-- Modal Header -->
-            <div class="flex items-start gap-3.5">
-                <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-2xl shrink-0">
-                    🗑️
-                </div>
-                <div class="flex-1">
-                    <h3 class="text-lg font-bold text-stone-900">Hapus Akun Pengguna</h3>
-                    <p class="text-xs text-stone-500 mt-0.5">Tindakan ini permanen dan tidak dapat dibatalkan.</p>
-                </div>
-                <button type="button" @click="deleteAccountModalOpen = false" class="text-stone-400 hover:text-stone-600 text-lg leading-none p-1 cursor-pointer">✕</button>
-            </div>
-
-            <!-- Warning Callout -->
-            <div class="p-3.5 bg-rose-50 border border-rose-200/80 rounded-xl space-y-2 text-xs text-rose-800">
-                <p class="font-semibold flex items-center gap-1.5 text-rose-900">
-                    <span>⚠️</span> Perhatian Penting:
-                </p>
-                <ul class="list-disc list-inside space-y-1 text-[11px] text-rose-700 pl-1">
-                    <li>Seluruh data profil, alamat tersimpan, dan riwayat pesanan akan dihapus.</li>
-                    <li>Saldo Koin dan kupon voucher yang belum digunakan akan hangus.</li>
-                    @if($user->store)
-                        <li class="font-bold text-rose-950">Toko kamu (<strong>{{ $user->store->name }}</strong>) dan seluruh produknya akan ditutup dan dihapus secara permanen.</li>
-                    @endif
-                </ul>
-            </div>
-
-            <!-- Form -->
-            <form action="{{ route('settings.delete_account') }}" method="POST" class="space-y-4">
-                @csrf
-                @method('DELETE')
-
-                <div>
-                    <label class="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                        Konfirmasi Kata Sandi Akun <span class="text-rose-500">*</span>
-                    </label>
-                    <div class="relative">
-                        <input :type="showDeletePass ? 'text' : 'password'" 
-                               name="password" 
-                               required 
-                               placeholder="Masukkan kata sandi saat ini..."
-                               class="w-full text-xs sm:text-sm border border-stone-200 rounded-xl px-3 py-2.5 pr-16 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500">
-                        <button type="button" 
-                                @click="showDeletePass = !showDeletePass" 
-                                class="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs font-semibold cursor-pointer">
-                            <span x-text="showDeletePass ? 'Sembunyi' : 'Lihat'"></span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2.5 pt-2">
-                    <button type="button" 
-                            @click="deleteAccountModalOpen = false" 
-                            class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 transition text-center cursor-pointer">
-                        Batal
-                    </button>
-                    <button type="submit" 
-                            class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 transition shadow-sm text-center flex items-center justify-center gap-1.5 cursor-pointer">
-                        <span>🗑️</span>
-                        <span>Hapus Permanen</span>
-                    </button>
-                </div>
-            </form>
-        </div>
     </div>
 </div>
 
@@ -2176,31 +1869,11 @@
             searchQuery: '',
             addressLabel: config.initialLabel || 'Rumah',
             mapPinned: config.hasMapPin,
+            notifPromo: true,
+            notifShipment: true,
+            notifVoucher: true,
             showCurrentPass: false,
             showNewPass: false,
-            deleteAccountModalOpen: false,
-            showDeletePass: false,
-
-            // Voucher / Promo Code State
-            redeemInput: '',
-            redeemLoading: false,
-            redeemResult: null,
-
-            async checkRedeemCode() {
-                const code = this.redeemInput.trim();
-                if (!code) return;
-                this.redeemLoading = true;
-                this.redeemResult = null;
-                try {
-                    const res = await fetch(`/api/redeem-codes/check?code=${encodeURIComponent(code)}`);
-                    const data = await res.json();
-                    this.redeemResult = data;
-                } catch (e) {
-                    this.redeemResult = { success: false, message: 'Gagal menghubungi server untuk verifikasi kode voucher.' };
-                } finally {
-                    this.redeemLoading = false;
-                }
-            },
 
             // Cascading Regional Address State
             regionData: INDONESIA_REGIONS,

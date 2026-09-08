@@ -10,8 +10,6 @@ use App\Models\ProductReview;
 use App\Models\ProductVariant;
 use App\Models\Store;
 use App\Models\StoreFollower;
-use App\Models\UserVoucher;
-use App\Models\Voucher;
 use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -19,7 +17,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class HomeController extends Controller
@@ -242,53 +239,17 @@ class HomeController extends Controller
 
         $matchingStore = null;
         if ($request->filled('q')) {
-            $term = trim((string) $request->input('q'));
-            $matchedStore = Store::where('name', 'ILIKE', '%'.$term.'%')
-                ->orWhere('slug', 'ILIKE', '%'.Str::slug($term).'%')
-                ->first();
-
-            if (! $matchedStore) {
-                $matchedProduct = Product::where('brand', 'ILIKE', '%'.$term.'%')
-                    ->whereNotNull('store_id')
-                    ->with('store')
-                    ->first();
-                if ($matchedProduct && $matchedProduct->store) {
-                    $matchedStore = $matchedProduct->store;
-                }
-            }
-
-            if ($matchedStore) {
-                $displayName = $matchedStore->name;
-                if (! str_contains(strtolower($displayName), 'official') && ($matchedStore->badge === 'Official' || $matchedStore->badge === 'Mall')) {
-                    $displayName = 'Official Store '.$displayName;
-                }
-
+            $matchedProduct = Product::where('brand', 'ILIKE', '%'.$request->input('q').'%')->first();
+            if ($matchedProduct) {
                 $matchingStore = [
-                    'name' => $displayName,
-                    'brand' => $matchedStore->name,
-                    'badge' => $matchedStore->badge ?? 'MALL',
-                    'rating' => $matchedStore->rating ?: 4.9,
+                    'name' => 'Official Store '.$matchedProduct->brand,
+                    'brand' => $matchedProduct->brand,
+                    'badge' => $matchedProduct->badge ?? 'Mall',
+                    'rating' => 4.9,
                     'chat_response' => '99% (Hitungan Menit)',
-                    'products_count' => $matchedStore->products()->available()->count() ?: ($matchedStore->products()->count() ?: 19),
-                    'followers' => ($matchedStore->followers()->count() > 0 ? number_format($matchedStore->followers()->count()).' Pengikut' : '128.5rb Pengikut'),
-                    'logo_url' => $matchedStore->logo_url,
-                    'url' => route('store.show', $matchedStore->slug ?: Str::slug($matchedStore->name)),
+                    'products_count' => Product::where('brand', $matchedProduct->brand)->count() + 18,
+                    'followers' => '128.5rb Pengikut',
                 ];
-            } else {
-                $matchedProduct = Product::where('brand', 'ILIKE', '%'.$term.'%')->first();
-                if ($matchedProduct) {
-                    $matchingStore = [
-                        'name' => 'Official Store '.$matchedProduct->brand,
-                        'brand' => $matchedProduct->brand,
-                        'badge' => $matchedProduct->badge ?? 'Mall',
-                        'rating' => 4.9,
-                        'chat_response' => '99% (Hitungan Menit)',
-                        'products_count' => Product::where('brand', $matchedProduct->brand)->count() + 18,
-                        'followers' => '128.5rb Pengikut',
-                        'logo_url' => null,
-                        'url' => route('search.results', ['q' => $matchedProduct->brand]),
-                    ];
-                }
             }
         }
 
@@ -622,251 +583,6 @@ class HomeController extends Controller
     }
 
     /**
-     * Display the Free Shipping (Bebas Ongkir) showcase portal.
-     */
-    public function freeShipping(Request $request): View|JsonResponse
-    {
-        $categories = Category::active()->withCount(['products' => function ($query) {
-            $query->available();
-        }])->get();
-
-        $selectedCategory = $request->input('category');
-        $onlyDiscount = $request->boolean('only_discount');
-        $maxPrice = (int) $request->input('max_price', 0);
-        $selectedBadge = $request->input('badge');
-        $sort = $request->input('sort', 'popular');
-
-        $query = Product::available()
-            ->with(['category', 'store']);
-
-        if ($selectedCategory) {
-            $query->whereHas('category', fn ($q) => $q->where('slug', $selectedCategory));
-        }
-
-        if ($onlyDiscount) {
-            $query->whereNotNull('discount_price')->whereRaw('discount_price < price');
-        }
-
-        if ($maxPrice > 0) {
-            $query->whereRaw('COALESCE(discount_price, price) <= ?', [$maxPrice]);
-        }
-
-        if ($selectedBadge) {
-            $query->where('badge', $selectedBadge);
-        }
-
-        switch ($sort) {
-            case 'cheapest':
-                $query->orderByRaw('COALESCE(discount_price, price) ASC');
-                break;
-            case 'priciest':
-                $query->orderByRaw('COALESCE(discount_price, price) DESC');
-                break;
-            case 'rating':
-                $query->orderByDesc('rating')->orderByDesc('sold_count');
-                break;
-            case 'highest_discount':
-                $query->whereNotNull('discount_price')->orderByRaw('(price - discount_price) * 1.0 / price DESC');
-                break;
-            case 'newest':
-                $query->latest();
-                break;
-            case 'popular':
-            default:
-                $query->orderByDesc('sold_count')->orderByDesc('rating');
-                break;
-        }
-
-        $products = $query->paginate(16)->withQueryString();
-
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'html' => view('partials.free-shipping-products-grid', compact('products'))->render(),
-                'total' => $products->total(),
-            ]);
-        }
-
-        return view('gratis-ongkir', compact(
-            'categories',
-            'products',
-            'selectedCategory',
-            'onlyDiscount',
-            'maxPrice',
-            'selectedBadge',
-            'sort'
-        ));
-    }
-
-    /**
-     * Display the Special Offers (Penawaran Spesial) showcase portal.
-     */
-    public function specialOffers(Request $request): View|JsonResponse
-    {
-        $categories = Category::active()->withCount(['products' => function ($query) {
-            $query->available();
-        }])->get();
-
-        $selectedCategory = $request->input('category');
-        $minDiscount = (int) $request->input('min_discount', 0);
-        $maxPrice = (int) $request->input('max_price', 0);
-        $selectedBadge = $request->input('badge');
-        $onlyDiscount = $request->boolean('only_discount');
-        $sort = $request->input('sort', 'highest_discount');
-
-        $query = Product::available()
-            ->with(['category', 'store']);
-
-        if ($onlyDiscount || $minDiscount > 0) {
-            $query->whereNotNull('discount_price')->whereRaw('discount_price < price');
-        } else {
-            $query->where(function ($q) {
-                $q->where(function ($sq) {
-                    $sq->whereNotNull('discount_price')->whereRaw('discount_price < price');
-                })->orWhere('is_featured', true);
-            });
-        }
-
-        if ($selectedCategory) {
-            $query->whereHas('category', fn ($q) => $q->where('slug', $selectedCategory));
-        }
-
-        if ($minDiscount > 0) {
-            $query->whereRaw('(price - discount_price) * 100 >= ? * price', [$minDiscount]);
-        }
-
-        if ($maxPrice > 0) {
-            $query->whereRaw('COALESCE(discount_price, price) <= ?', [$maxPrice]);
-        }
-
-        if ($selectedBadge) {
-            $query->where('badge', $selectedBadge);
-        }
-
-        switch ($sort) {
-            case 'cheapest':
-                $query->orderByRaw('COALESCE(discount_price, price) ASC');
-                break;
-            case 'priciest':
-                $query->orderByRaw('COALESCE(discount_price, price) DESC');
-                break;
-            case 'rating':
-                $query->orderByDesc('rating')->orderByDesc('sold_count');
-                break;
-            case 'popular':
-                $query->orderByDesc('sold_count')->orderByDesc('rating');
-                break;
-            case 'newest':
-                $query->latest();
-                break;
-            case 'highest_discount':
-            default:
-                $query->orderByRaw('CASE WHEN discount_price IS NOT NULL AND discount_price < price THEN (price - discount_price) * 1.0 / price ELSE 0 END DESC')
-                    ->orderByDesc('sold_count');
-                break;
-        }
-
-        $products = $query->paginate(18)->withQueryString();
-
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'html' => view('partials.special-offers-products-grid', compact('products'))->render(),
-                'total' => $products->total(),
-            ]);
-        }
-
-        return view('penawaran-spesial', compact(
-            'categories',
-            'products',
-            'selectedCategory',
-            'minDiscount',
-            'maxPrice',
-            'selectedBadge',
-            'onlyDiscount',
-            'sort'
-        ));
-    }
-
-    /**
-     * Display the New Products (Produk Baru < 1 Bulan) showcase portal.
-     */
-    public function newProducts(Request $request): View|JsonResponse
-    {
-        $oneMonthAgo = now()->subDays(30);
-
-        $categories = Category::active()->withCount(['products' => function ($query) use ($oneMonthAgo) {
-            $query->available()->where('created_at', '>=', $oneMonthAgo);
-        }])->get();
-
-        $selectedCategory = $request->input('category');
-        $onlyDiscount = $request->boolean('only_discount');
-        $maxPrice = (int) $request->input('max_price', 0);
-        $selectedBadge = $request->input('badge');
-        $sort = $request->input('sort', 'newest');
-
-        $query = Product::available()
-            ->with(['category', 'store'])
-            ->where('created_at', '>=', $oneMonthAgo);
-
-        if ($selectedCategory) {
-            $query->whereHas('category', fn ($q) => $q->where('slug', $selectedCategory));
-        }
-
-        if ($onlyDiscount) {
-            $query->whereNotNull('discount_price')->whereRaw('discount_price < price');
-        }
-
-        if ($maxPrice > 0) {
-            $query->whereRaw('COALESCE(discount_price, price) <= ?', [$maxPrice]);
-        }
-
-        if ($selectedBadge) {
-            $query->where('badge', $selectedBadge);
-        }
-
-        switch ($sort) {
-            case 'cheapest':
-                $query->orderByRaw('COALESCE(discount_price, price) ASC');
-                break;
-            case 'priciest':
-                $query->orderByRaw('COALESCE(discount_price, price) DESC');
-                break;
-            case 'rating':
-                $query->orderByDesc('rating')->orderByDesc('sold_count');
-                break;
-            case 'popular':
-                $query->orderByDesc('sold_count')->orderByDesc('rating');
-                break;
-            case 'highest_discount':
-                $query->orderByRaw('CASE WHEN discount_price IS NOT NULL AND discount_price < price THEN (price - discount_price) * 1.0 / price ELSE 0 END DESC')
-                    ->orderByDesc('created_at');
-                break;
-            case 'newest':
-            default:
-                $query->orderBy('created_at', 'desc');
-                break;
-        }
-
-        $products = $query->paginate(18)->withQueryString();
-
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'html' => view('partials.new-products-grid', compact('products'))->render(),
-                'total' => $products->total(),
-            ]);
-        }
-
-        return view('produk-baru', compact(
-            'categories',
-            'products',
-            'selectedCategory',
-            'onlyDiscount',
-            'maxPrice',
-            'selectedBadge',
-            'sort'
-        ));
-    }
-
-    /**
      * Display the comprehensive Top Up & Digital Bills (PPOB) portal.
      */
     public function topUpBills(Request $request): View
@@ -888,9 +604,7 @@ class HomeController extends Controller
             'product_name' => ['required', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:1000'],
             'admin_fee' => ['nullable', 'numeric'],
-            'payment_method' => ['required', 'string', 'in:qris'],
-        ], [
-            'payment_method.in' => 'Metode pembayaran untuk top up & tagihan hanya tersedia via QRIS.',
+            'payment_method' => ['required', 'string'],
         ]);
 
         $user = Auth::user();
@@ -1068,11 +782,8 @@ class HomeController extends Controller
             'customer_phone' => ['required', 'string', 'max:20'],
             'customer_address' => ['required', 'string', 'max:1000'],
             'customer_notes' => ['nullable', 'string', 'max:500'],
-            'payment_method' => ['nullable', 'string', 'in:qris,cod'],
+            'payment_method' => ['nullable', 'string', 'in:qris,bca_va,mandiri_va,cod'],
             'coupon_code' => ['nullable', 'string', 'max:50'],
-            'redeem_code' => ['nullable', 'string', 'max:50'],
-            'shipping_voucher_code' => ['nullable', 'string', 'max:50'],
-            'discount_voucher_code' => ['nullable', 'string', 'max:50'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100'],
@@ -1080,53 +791,12 @@ class HomeController extends Controller
             'items.*.variant_name' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $paymentMethod = strtolower($validated['payment_method'] ?? 'qris');
-        $methodLabels = [
-            'qris' => 'QRIS',
-            'cod' => 'COD (Bayar di Tempat)',
-        ];
-        $methodLabel = $methodLabels[$paymentMethod] ?? strtoupper($paymentMethod);
-
-        $currentUser = Auth::user();
-
-        foreach ($validated['items'] as $itemInput) {
-            $product = Product::with('store')->find($itemInput['product_id']);
-            if ($product) {
-                if ($currentUser && $product->isOwnedBy($currentUser)) {
-                    throw ValidationException::withMessages([
-                        'items' => "Kamu tidak dapat membeli produk dari tokomu sendiri (\"{$product->name}\").",
-                    ]);
-                }
-
-                if ($product->store) {
-                    if ($product->store->isSuspended()) {
-                        throw ValidationException::withMessages([
-                            'items' => "Toko \"{$product->store->name}\" saat ini sedang dinonaktifkan oleh administrator sehingga produk \"{$product->name}\" tidak dapat dipesan.",
-                        ]);
-                    }
-                    if ($product->store->isClosed()) {
-                        throw ValidationException::withMessages([
-                            'items' => "Toko \"{$product->store->name}\" sedang tutup sementara (mode libur) sehingga produk \"{$product->name}\" belum dapat dipesan saat ini.",
-                        ]);
-                    }
-                }
-
-                if (! $product->allowsPaymentMethod($paymentMethod)) {
-                    throw ValidationException::withMessages([
-                        'payment_method' => "Produk \"{$product->name}\" tidak mendukung metode pembayaran {$methodLabel}.",
-                    ]);
-                }
-            }
-        }
-
         $order = DB::transaction(function () use ($validated) {
             $totalAmount = 0;
             $itemsData = [];
-            $productsMap = [];
 
             foreach ($validated['items'] as $itemInput) {
                 $product = Product::findOrFail($itemInput['product_id']);
-                $productsMap[$product->id] = $product;
                 $unitPrice = $product->effective_price;
                 $quantity = (int) $itemInput['quantity'];
                 $productName = $product->name;
@@ -1163,176 +833,23 @@ class HomeController extends Controller
             }
 
             $shippingCost = 15000; // Flat standard shipping
-
-            // Check seller free shipping settings
-            $allQualifyFreeShipping = count($itemsData) > 0 && collect($itemsData)->every(function ($item) use ($productsMap, $totalAmount) {
-                $p = $productsMap[$item['product_id']] ?? null;
-                if (! $p || ! $p->is_free_shipping) {
-                    return false;
-                }
-                if ($p->free_shipping_min_spend > 0) {
-                    return $totalAmount >= $p->free_shipping_min_spend;
-                }
-
-                return true;
-            });
-
-            if ($allQualifyFreeShipping || $totalAmount >= 100000) {
-                $shippingCost = 0; // Free shipping promo
+            if ($totalAmount >= 100000) {
+                $shippingCost = 0; // Free shipping promo >= 100rb!
             }
 
-            $rawShippingCost = $shippingCost;
-            $voucherShippingDiscount = 0;
-            $voucherProductDiscount = 0;
-            $redeemShippingDiscount = 0;
-            $redeemProductDiscount = 0;
-            $usedUserVouchers = [];
+            // Coupon code validation & calculation
+            $discountAmount = 0;
+            $couponCode = strtoupper(trim($validated['coupon_code'] ?? ''));
 
-            $shippingVoucherCode = strtoupper(trim((string) ($validated['shipping_voucher_code'] ?? '')));
-            $discountVoucherCode = strtoupper(trim((string) ($validated['discount_voucher_code'] ?? '')));
-            $redeemCode = strtoupper(trim((string) ($validated['redeem_code'] ?? $validated['coupon_code'] ?? '')));
-
-            // 1. Process Shipping Category Voucher (Max 1)
-            if (! empty($shippingVoucherCode)) {
-                $shipVoucher = Voucher::active()->where('code', $shippingVoucherCode)->first();
-                if ($shipVoucher) {
-                    if ($shipVoucher->category !== 'shipping') {
-                        throw ValidationException::withMessages([
-                            'shipping_voucher_code' => "Voucher {$shippingVoucherCode} bukan merupakan voucher kategori ongkir.",
-                        ]);
-                    }
-
-                    if (! $shipVoucher->isApplicableForToday()) {
-                        throw ValidationException::withMessages([
-                            'shipping_voucher_code' => "Voucher ongkir {$shippingVoucherCode} tidak aktif pada hari ini.",
-                        ]);
-                    }
-
-                    if (! empty($shipVoucher->member_tier) && $shipVoucher->member_tier !== 'all') {
-                        if (! Auth::user()->meetsTierRequirement($shipVoucher->member_tier)) {
-                            throw ValidationException::withMessages([
-                                'shipping_voucher_code' => "Voucher ongkir {$shippingVoucherCode} khusus untuk {$shipVoucher->member_tier_label}.",
-                            ]);
-                        }
-                    }
-
-                    if ($shipVoucher->isApplicable($totalAmount)) {
-                        $voucherShippingDiscount = $shipVoucher->calculateDeduction($totalAmount, $shippingCost);
-
-                        if ($shipVoucher->is_weekly_recurring) {
-                            $uv = UserVoucher::where('user_id', Auth::id())
-                                ->where('voucher_id', $shipVoucher->id)
-                                ->whereBetween('claimed_at', [now()->startOfWeek(), now()->endOfWeek()])
-                                ->unused()
-                                ->first();
-                        } else {
-                            $uv = UserVoucher::where('user_id', Auth::id())
-                                ->where('voucher_id', $shipVoucher->id)
-                                ->unused()
-                                ->first();
-                        }
-
-                        if (! $uv) {
-                            $uv = UserVoucher::create([
-                                'user_id' => Auth::id(),
-                                'voucher_id' => $shipVoucher->id,
-                                'claimed_at' => now(),
-                            ]);
-                            $shipVoucher->increment('claimed_count');
-                        }
-                        $usedUserVouchers[] = $uv;
-                    }
-                }
+            if ($couponCode === 'SNACKSERU') {
+                $discountAmount = 10000;
+            } elseif ($couponCode === 'HEMAT20') {
+                $discountAmount = (int) min(25000, round($totalAmount * 0.20));
+            } elseif ($couponCode === 'GRATISONGKIR') {
+                $shippingCost = 0;
             }
 
-            // 2. Process Product Discount Category Voucher (Max 1)
-            if (! empty($discountVoucherCode)) {
-                $discVoucher = Voucher::active()->where('code', $discountVoucherCode)->first();
-                if ($discVoucher) {
-                    if ($discVoucher->category !== 'discount') {
-                        throw ValidationException::withMessages([
-                            'discount_voucher_code' => "Voucher {$discountVoucherCode} bukan merupakan voucher kategori diskon belanja.",
-                        ]);
-                    }
-
-                    if (! $discVoucher->isApplicableForToday()) {
-                        throw ValidationException::withMessages([
-                            'discount_voucher_code' => "Voucher diskon {$discountVoucherCode} tidak aktif pada hari ini.",
-                        ]);
-                    }
-
-                    if (! empty($discVoucher->member_tier) && $discVoucher->member_tier !== 'all') {
-                        if (! Auth::user()->meetsTierRequirement($discVoucher->member_tier)) {
-                            throw ValidationException::withMessages([
-                                'discount_voucher_code' => "Voucher diskon {$discountVoucherCode} khusus untuk {$discVoucher->member_tier_label}.",
-                            ]);
-                        }
-                    }
-
-                    // Calculate subtotal for items that allow vouchers
-                    $voucherEligibleAmount = collect($itemsData)->filter(function ($item) use ($productsMap) {
-                        $p = $productsMap[$item['product_id']] ?? null;
-
-                        return $p ? $p->allowsVouchers() : true;
-                    })->sum('subtotal');
-
-                    if ($voucherEligibleAmount <= 0) {
-                        throw ValidationException::withMessages([
-                            'discount_voucher_code' => 'Produk dalam pesanan ini tidak mengizinkan penggunaan voucher diskon.',
-                        ]);
-                    }
-
-                    if ($discVoucher->isApplicable($voucherEligibleAmount)) {
-                        $voucherProductDiscount = $discVoucher->calculateDeduction($voucherEligibleAmount);
-
-                        if ($discVoucher->is_weekly_recurring) {
-                            $uv = UserVoucher::where('user_id', Auth::id())
-                                ->where('voucher_id', $discVoucher->id)
-                                ->whereBetween('claimed_at', [now()->startOfWeek(), now()->endOfWeek()])
-                                ->unused()
-                                ->first();
-                        } else {
-                            $uv = UserVoucher::where('user_id', Auth::id())
-                                ->where('voucher_id', $discVoucher->id)
-                                ->unused()
-                                ->first();
-                        }
-
-                        if (! $uv) {
-                            $uv = UserVoucher::create([
-                                'user_id' => Auth::id(),
-                                'voucher_id' => $discVoucher->id,
-                                'claimed_at' => now(),
-                            ]);
-                            $discVoucher->increment('claimed_count');
-                        }
-                        $usedUserVouchers[] = $uv;
-                    }
-                }
-            }
-
-            // 3. Process Redeem Code (Separate system from vouchers)
-            if (! empty($redeemCode)) {
-                if ($redeemCode === 'SNACKSERU') {
-                    $redeemProductDiscount = 10000;
-                } elseif ($redeemCode === 'HEMAT20') {
-                    $redeemProductDiscount = (int) min(25000, round($totalAmount * 0.20));
-                } elseif ($redeemCode === 'GRATISONGKIR') {
-                    $redeemShippingDiscount = min(15000, $rawShippingCost);
-                } elseif ($redeemCode === 'REDEEM5K') {
-                    $redeemProductDiscount = 5000;
-                } elseif ($redeemCode === 'REDEEM10K') {
-                    $redeemProductDiscount = 10000;
-                } elseif ($redeemCode === 'SUPERREDEEM') {
-                    $redeemProductDiscount = 25000;
-                }
-            }
-
-            $shippingDiscountAmount = min($rawShippingCost, $voucherShippingDiscount + $redeemShippingDiscount);
-            $shippingCost = max(0, $rawShippingCost - $shippingDiscountAmount);
-
-            $totalProductDiscount = $voucherProductDiscount + $redeemProductDiscount;
-            $grandTotal = max(0, $totalAmount + $shippingCost - $totalProductDiscount);
+            $grandTotal = max(0, $totalAmount + $shippingCost - $discountAmount);
 
             $paymentMethod = strtolower($validated['payment_method'] ?? 'qris');
             $isPaidImmediately = ($paymentMethod === 'qris');
@@ -1346,27 +863,14 @@ class HomeController extends Controller
                 'customer_address' => $validated['customer_address'],
                 'customer_notes' => $validated['customer_notes'] ?? null,
                 'payment_method' => $paymentMethod,
-                'coupon_code' => ! empty($redeemCode) ? $redeemCode : (! empty($discountVoucherCode) ? $discountVoucherCode : (! empty($shippingVoucherCode) ? $shippingVoucherCode : null)),
-                'redeem_code' => ! empty($redeemCode) ? $redeemCode : null,
-                'redeem_discount_amount' => $redeemProductDiscount,
-                'shipping_voucher_code' => ! empty($shippingVoucherCode) ? $shippingVoucherCode : null,
-                'discount_voucher_code' => ! empty($discountVoucherCode) ? $discountVoucherCode : null,
-                'discount_amount' => $totalProductDiscount,
+                'coupon_code' => ! empty($couponCode) ? $couponCode : null,
+                'discount_amount' => $discountAmount,
                 'total_amount' => $totalAmount,
                 'shipping_cost' => $shippingCost,
-                'shipping_discount_amount' => $shippingDiscountAmount,
                 'grand_total' => $grandTotal,
                 'status' => $isPaidImmediately ? 'processing' : 'pending',
                 'payment_status' => $paymentStatus,
             ]);
-
-            foreach ($usedUserVouchers as $uv) {
-                $uv->update([
-                    'used_at' => now(),
-                    'order_id' => $order->id,
-                ]);
-                $uv->voucher?->increment('used_count');
-            }
 
             foreach ($itemsData as $item) {
                 $order->items()->create($item);
@@ -1411,89 +915,11 @@ class HomeController extends Controller
     }
 
     /**
-     * Return product variants and store information for cart variant switching.
-     */
-    public function getProductVariants(Product $product): JsonResponse
-    {
-        $product->load(['variants', 'store']);
-
-        $variants = $product->variants->map(function (ProductVariant $v) use ($product) {
-            return [
-                'id' => $v->id,
-                'name' => $v->name,
-                'price' => $v->price ?: $product->effective_price,
-                'stock' => (int) $v->stock,
-                'image_url' => $v->variant_image_url ?: $product->product_image_url,
-            ];
-        });
-
-        return response()->json([
-            'product_id' => $product->id,
-            'product_name' => $product->name,
-            'product_slug' => $product->slug,
-            'is_free_shipping' => (bool) $product->is_free_shipping,
-            'free_shipping_min_spend' => (int) ($product->free_shipping_min_spend ?? 0),
-            'allow_vouchers' => (bool) $product->allow_vouchers,
-            'base_price' => $product->effective_price,
-            'base_image' => $product->product_image_url,
-            'store' => $product->store ? [
-                'id' => $product->store->id,
-                'name' => $product->store->name,
-                'slug' => $product->store->slug,
-                'badge' => $product->store->badge ?? 'Official',
-                'city' => $product->store->city ?? 'Indonesia',
-            ] : [
-                'id' => null,
-                'name' => $product->brand ?: 'NusantaraMart Official',
-                'slug' => null,
-                'badge' => $product->badge ?: 'Official',
-                'city' => 'Indonesia',
-            ],
-            'variants' => $variants,
-        ]);
-    }
-
-    /**
      * Display dedicated checkout & payment page.
      */
     public function showCheckout(): View
     {
-        $user = Auth::user();
-        $userVouchers = UserVoucher::with('voucher')
-            ->where('user_id', $user?->id)
-            ->unused()
-            ->get();
-
-        $claimedShippingVouchers = $userVouchers->filter(fn ($uv) => $uv->voucher && $uv->voucher->category === 'shipping' && $uv->voucher->is_active)->map(fn ($uv) => $uv->voucher)->values();
-        $claimedDiscountVouchers = $userVouchers->filter(fn ($uv) => $uv->voucher && $uv->voucher->category === 'discount' && $uv->voucher->is_active)->map(fn ($uv) => $uv->voucher)->values();
-
-        $allShippingVouchers = Voucher::active()->shipping()->get();
-        $allDiscountVouchers = Voucher::active()->discount()->get();
-
-        $productPaymentMethods = Product::all(['id', 'allowed_payment_methods'])
-            ->mapWithKeys(fn ($p) => [$p->id => $p->allowed_payment_methods])
-            ->all();
-
-        $userOwnedProductIds = ($user && $user->store)
-            ? Product::where('store_id', $user->store->id)->pluck('id')->all()
-            : [];
-
-        $productShippingSettings = Product::all(['id', 'is_free_shipping', 'free_shipping_min_spend', 'allow_vouchers'])
-            ->keyBy('id')
-            ->toArray();
-
-        $userMemberTier = $user?->member_tier ?? 'silver';
-
-        return view('checkout', compact(
-            'claimedShippingVouchers',
-            'claimedDiscountVouchers',
-            'allShippingVouchers',
-            'allDiscountVouchers',
-            'productPaymentMethods',
-            'userOwnedProductIds',
-            'productShippingSettings',
-            'userMemberTier'
-        ));
+        return view('checkout');
     }
 
     /**
@@ -1670,11 +1096,7 @@ class HomeController extends Controller
         }
 
         // Real Product Reviews & Rating Summary
-        $reviews = $product->reviews()
-            ->with(['user', 'likes', 'comments.user'])
-            ->withCount(['likes', 'comments'])
-            ->latest()
-            ->get();
+        $reviews = $product->reviews()->with('user')->latest()->get();
         $reviewsCount = $reviews->count();
         $averageRating = $reviewsCount > 0 ? round($reviews->avg('rating'), 1) : (float) ($product->rating ?: 5.0);
 

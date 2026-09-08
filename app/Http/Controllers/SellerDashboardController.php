@@ -12,7 +12,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -157,10 +156,6 @@ class SellerDashboardController extends Controller
     {
         $store = $request->user()->store;
 
-        $paymentRules = $request->has('payment_methods_submitted')
-            ? ['required', 'array', 'min:1']
-            : ['nullable', 'array', 'min:1'];
-
         $validated = $request->validate([
             'category_id' => ['required', 'exists:categories,id'],
             'name' => ['required', 'string', 'min:3', 'max:150'],
@@ -170,11 +165,6 @@ class SellerDashboardController extends Controller
             'stock' => ['required', 'integer', 'min:0'],
             'weight_grams' => ['required', 'integer', 'min:1'],
             'is_available' => ['nullable', 'boolean'],
-            'allowed_payment_methods' => $paymentRules,
-            'allowed_payment_methods.*' => ['string', 'in:qris,cod'],
-            'is_free_shipping' => ['nullable', 'boolean'],
-            'free_shipping_min_spend' => ['nullable', 'numeric', 'min:0'],
-            'allow_vouchers' => ['nullable', 'boolean'],
             'image' => ['nullable', 'image', 'max:2048'],
             'images' => ['nullable', 'array', 'max:10'],
             'images.*' => ['nullable', 'image', 'max:2048'],
@@ -183,9 +173,6 @@ class SellerDashboardController extends Controller
             'variants.*.price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.stock' => ['nullable', 'integer', 'min:0'],
             'variants.*.image' => ['nullable', 'image', 'max:2048'],
-        ], [
-            'allowed_payment_methods.required' => 'Pilih minimal satu metode pembayaran untuk produk ini.',
-            'allowed_payment_methods.min' => 'Pilih minimal satu metode pembayaran untuk produk ini.',
         ]);
 
         $baseSlug = Str::slug($validated['name']);
@@ -227,7 +214,7 @@ class SellerDashboardController extends Controller
             'slug' => $slug,
             'description' => $validated['description'],
             'price' => (int) $validated['price'],
-            'discount_price' => ! empty($validated['discount_price']) ? (int) $validated['discount_price'] : null,
+            'discount_price' => $validated['discount_price'] ? (int) $validated['discount_price'] : null,
             'weight_grams' => (int) $validated['weight_grams'],
             'stock' => (int) $validated['stock'],
             'rating' => 5.0,
@@ -236,10 +223,6 @@ class SellerDashboardController extends Controller
             'gallery_images' => ! empty($galleryImages) ? array_values(array_unique($galleryImages)) : null,
             'is_available' => $request->has('is_available'),
             'is_featured' => false,
-            'allowed_payment_methods' => $validated['allowed_payment_methods'] ?? ['qris', 'cod'],
-            'is_free_shipping' => $request->boolean('is_free_shipping'),
-            'free_shipping_min_spend' => $request->filled('free_shipping_min_spend') ? (int) $request->input('free_shipping_min_spend') : 0,
-            'allow_vouchers' => $request->boolean('allow_vouchers', true),
         ]);
 
         if (! empty($validated['variants'])) {
@@ -284,10 +267,6 @@ class SellerDashboardController extends Controller
         $store = auth()->user()->store;
         abort_unless($product->store_id === $store->id || auth()->user()->isAdmin(), 403, 'Akses ditolak.');
 
-        $paymentRules = $request->has('payment_methods_submitted')
-            ? ['required', 'array', 'min:1']
-            : ['nullable', 'array', 'min:1'];
-
         $validated = $request->validate([
             'category_id' => ['required', 'exists:categories,id'],
             'name' => ['required', 'string', 'min:3', 'max:150'],
@@ -297,11 +276,6 @@ class SellerDashboardController extends Controller
             'stock' => ['required', 'integer', 'min:0'],
             'weight_grams' => ['required', 'integer', 'min:1'],
             'is_available' => ['nullable', 'boolean'],
-            'allowed_payment_methods' => $paymentRules,
-            'allowed_payment_methods.*' => ['string', 'in:qris,cod'],
-            'is_free_shipping' => ['nullable', 'boolean'],
-            'free_shipping_min_spend' => ['nullable', 'numeric', 'min:0'],
-            'allow_vouchers' => ['nullable', 'boolean'],
             'image' => ['nullable', 'image', 'max:2048'],
             'images' => ['nullable', 'array', 'max:10'],
             'images.*' => ['nullable', 'image', 'max:2048'],
@@ -312,9 +286,6 @@ class SellerDashboardController extends Controller
             'variants.*.price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.stock' => ['nullable', 'integer', 'min:0'],
             'variants.*.image' => ['nullable', 'image', 'max:2048'],
-        ], [
-            'allowed_payment_methods.required' => 'Pilih minimal satu metode pembayaran untuk produk ini.',
-            'allowed_payment_methods.min' => 'Pilih minimal satu metode pembayaran untuk produk ini.',
         ]);
 
         // Retained gallery images from existing list
@@ -364,27 +335,18 @@ class SellerDashboardController extends Controller
             $imagePath = $galleryImages[0];
         }
 
-        $updateData = [
+        $product->update([
             'category_id' => $validated['category_id'],
             'name' => $validated['name'],
             'description' => $validated['description'],
             'price' => (int) $validated['price'],
-            'discount_price' => ! empty($validated['discount_price']) ? (int) $validated['discount_price'] : null,
+            'discount_price' => $validated['discount_price'] ? (int) $validated['discount_price'] : null,
             'weight_grams' => (int) $validated['weight_grams'],
             'stock' => (int) $validated['stock'],
             'image_path' => $imagePath,
             'gallery_images' => ! empty($galleryImages) ? array_values(array_unique($galleryImages)) : null,
             'is_available' => $request->has('is_available'),
-            'is_free_shipping' => $request->boolean('is_free_shipping'),
-            'free_shipping_min_spend' => $request->filled('free_shipping_min_spend') ? (int) $request->input('free_shipping_min_spend') : 0,
-            'allow_vouchers' => $request->boolean('allow_vouchers'),
-        ];
-
-        if ($request->has('payment_methods_submitted') || isset($validated['allowed_payment_methods'])) {
-            $updateData['allowed_payment_methods'] = $validated['allowed_payment_methods'] ?? ['qris', 'cod'];
-        }
-
-        $product->update($updateData);
+        ]);
 
         // Sync variants
         $incomingIds = collect($validated['variants'] ?? [])
@@ -809,92 +771,6 @@ class SellerDashboardController extends Controller
 
         return redirect()->route('seller.settings')
             ->with('success', 'Pengaturan dan foto profil toko berhasil diperbarui!');
-    }
-
-    /**
-     * Toggle store operational status between open (approved) and temporarily closed (closed / mode libur).
-     */
-    public function toggleStoreStatus(Request $request): RedirectResponse
-    {
-        $store = $request->user()->store;
-        if (! $store) {
-            return redirect()->route('seller.register');
-        }
-
-        if ($store->is_suspended) {
-            return back()->with('error', 'Toko kamu sedang dalam masa penangguhan oleh admin. Status toko tidak dapat diubah.');
-        }
-
-        if ($store->status === 'approved') {
-            $store->update(['status' => 'closed']);
-            AuditLogger::seller('Tutup Toko Sementara', "Toko {$store->name} diubah ke status tutup sementara (mode libur)", $request->user(), $store);
-
-            return back()->with('success', 'Toko kamu sekarang dalam status Tutup Sementara (Mode Libur). Pembeli tidak dapat memesan produk selama toko tutup.');
-        } elseif ($store->status === 'closed') {
-            $store->update(['status' => 'approved']);
-            AuditLogger::seller('Buka Toko Kembali', "Toko {$store->name} diaktifkan kembali melayani pembeli", $request->user(), $store);
-
-            return back()->with('success', 'Toko kamu telah dibuka kembali dan aktif melayani pesanan pembeli! 🎉');
-        }
-
-        return back()->with('error', 'Status toko saat ini ('.$store->status.') tidak dapat diubah.');
-    }
-
-    /**
-     * Permanently close and delete the seller's store while keeping user customer account.
-     */
-    public function closeStorePermanently(Request $request): RedirectResponse
-    {
-        $user = $request->user();
-        $store = $user->store;
-        if (! $store) {
-            return redirect()->route('settings');
-        }
-
-        $request->validate([
-            'password' => ['required', 'string'],
-        ], [
-            'password.required' => 'Kata sandi wajib diisi untuk mengonfirmasi penutupan toko permanen.',
-        ]);
-
-        if (! Hash::check($request->password, $user->password)) {
-            return back()->with('error', 'Kata sandi yang kamu masukkan salah. Penutupan toko dibatalkan.');
-        }
-
-        // Check if there are active orders pending or processing
-        $hasActiveOrders = Order::whereHas('items.product', fn ($q) => $q->where('store_id', $store->id))
-            ->whereIn('status', ['pending', 'processing'])
-            ->exists();
-
-        if ($hasActiveOrders) {
-            return back()->with('error', 'Toko kamu masih memiliki pesanan pembeli yang belum selesai diproses. Harap selesaikan seluruh pesanan terlebih dahulu sebelum menutup toko.');
-        }
-
-        $storeName = $store->name;
-
-        // Cleanup store images
-        if ($store->logo && Storage::disk('public')->exists($store->logo)) {
-            Storage::disk('public')->delete($store->logo);
-        }
-        if ($store->ktp_photo_path && Storage::disk('public')->exists($store->ktp_photo_path)) {
-            Storage::disk('public')->delete($store->ktp_photo_path);
-        }
-
-        // Cleanup products of this store
-        foreach ($store->products as $product) {
-            if ($product->image && ! str_starts_with($product->image, 'http') && Storage::disk('public')->exists($product->image)) {
-                Storage::disk('public')->delete($product->image);
-            }
-            $product->delete();
-        }
-
-        AuditLogger::seller('Tutup Toko Permanen', "Toko {$storeName} resmi ditutup dan dihapus secara permanen oleh pemilik toko.", $user, $store);
-
-        // Delete the store record
-        $store->delete();
-
-        return redirect()->route('settings')
-            ->with('profile_success', "Toko '{$storeName}' telah resmi ditutup dan dihapus dari NusantaraMart. Akun pembeli kamu tetap aktif! 🛍️");
     }
 
     /**

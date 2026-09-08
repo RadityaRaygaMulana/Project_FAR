@@ -17,14 +17,6 @@
             username: '',
             delete_url: ''
         },
-        suspendModalOpen: false,
-        suspendTarget: {
-            id: null,
-            name: '',
-            suspend_url: '',
-            duration: 'permanent',
-            custom_date: '',
-        },
         editingUser: {
             id: null,
             name: '',
@@ -43,10 +35,6 @@
         confirmDelete(u) {
             this.deleteTarget = { ...u };
             this.deleteModalOpen = true;
-        },
-        confirmSuspend(u) {
-            this.suspendTarget = { ...u, duration: 'permanent', custom_date: '' };
-            this.suspendModalOpen = true;
         },
         userList: [
             @foreach($users as $user)
@@ -227,23 +215,7 @@
 
                             <!-- VERIFICATION STATUS -->
                             <td class="py-4 px-4">
-                                @if($user->is_suspended)
-                                    <div>
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
-                                            <span>🚫</span>
-                                            <span>
-                                                @if($user->suspended_until)
-                                                    Diblokir (s/d {{ $user->suspended_until->translatedFormat('d M') }})
-                                                @else
-                                                    Diblokir Permanen
-                                                @endif
-                                            </span>
-                                        </span>
-                                        @if($user->suspended_until)
-                                            <p class="text-[10px] text-slate-400 mt-0.5 font-medium">{{ $user->suspended_until->diffForHumans() }}</p>
-                                        @endif
-                                    </div>
-                                @elseif($user->email_verified_at)
+                                @if($user->email_verified_at)
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                                         <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
@@ -287,29 +259,7 @@
                                             <span>Edit</span>
                                         </button>
 
-                                        <!-- Suspend / Unsuspend Button -->
-                                        @if($user->is_suspended)
-                                            <form method="POST" action="{{ route('admin.users.unsuspend', $user) }}">
-                                                @csrf
-                                                <button type="submit"
-                                                        onclick="return confirm('Buka blokir akun {{ addslashes($user->name) }}?')"
-                                                        class="px-3 py-1.5 text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg border border-emerald-200 transition cursor-pointer flex items-center gap-1.5 active:scale-95">
-                                                    <span>✅</span><span>Buka Blokir</span>
-                                                </button>
-                                            </form>
-                                        @else
-                                            <button type="button"
-                                                    @click="confirmSuspend({
-                                                        id: {{ $user->id }},
-                                                        name: {{ Js::from($user->name) }},
-                                                        suspend_url: '{{ route('admin.users.suspend', $user) }}'
-                                                    })"
-                                                    class="px-3 py-1.5 text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg border border-amber-200 transition cursor-pointer flex items-center gap-1.5 active:scale-95">
-                                                <span>🚫</span><span>Blokir</span>
-                                            </button>
-                                        @endif
-
-                                        <!-- Hapus Button -->
+                                        <!-- Hapus Button (Opens Beautiful Modal, NO browser alert) -->
                                         <button type="button" 
                                                 @click="confirmDelete({
                                                     id: {{ $user->id }},
@@ -579,126 +529,6 @@
                     Ya, Hapus
                 </button>
             </form>
-        </div>
-    </div>
-
-    {{-- 3. SUSPEND USER MODAL (PERFECTLY CENTERED, NEVER CUT OFF / OFFSET, AND COKLAT NUSANTARAMART THEMED) --}}
-    <div x-show="suspendModalOpen"
-         x-cloak
-         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-4 sm:p-6 flex min-h-screen items-center justify-center"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0">
-
-        <div class="relative my-auto w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]"
-             @click.away="suspendModalOpen = false"
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 scale-95"
-             x-transition:enter-end="opacity-100 scale-100">
-
-            {{-- Modal Header (NusantaraMart Chocolate) --}}
-            <div class="shrink-0 bg-[#6B4226] px-5 py-4 flex items-center justify-between text-white border-b border-[#54321B]">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-xs border border-white/20 flex items-center justify-center text-xl shadow-xs">
-                        🚫
-                    </div>
-                    <div>
-                        <p class="text-sm font-black tracking-tight">Blokir Akun Pengguna</p>
-                        <p class="text-[11px] text-[#FAF4ED] font-medium" x-text="'Target: ' + suspendTarget.name"></p>
-                    </div>
-                </div>
-                <button type="button" @click="suspendModalOpen = false" 
-                        class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-[#FAF4ED] hover:text-white transition flex items-center justify-center font-bold text-sm cursor-pointer">✕</button>
-            </div>
-
-            <div class="overflow-y-auto p-5 space-y-4">
-                <div class="p-3.5 bg-[#FAF4ED] border border-[#EAE1D7] rounded-xl flex items-start gap-2.5">
-                    <span class="text-base shrink-0 mt-0.5">⚠️</span>
-                    <p class="text-xs font-semibold text-[#54321B] leading-relaxed">
-                        Pengguna yang diblokir <strong class="text-[#6B4226] underline font-bold" x-text="suspendTarget.name"></strong> tidak dapat masuk ke sistem sampai masa blokir berakhir atau dicabut oleh admin. Alasan akan ditampilkan sebagai card informatif di halaman login.
-                    </p>
-                </div>
-
-                <form :action="suspendTarget.suspend_url" method="POST" class="space-y-4">
-                    @csrf
-
-                    {{-- DURATION SELECTION --}}
-                    <div>
-                        <label class="block text-xs font-black text-slate-700 mb-1.5 flex items-center justify-between">
-                            <span>Durasi Pemblokiran <span class="text-[#6B4226]">*</span></span>
-                            <span class="text-[10px] text-slate-400 font-normal">Pilih batas waktu blokir</span>
-                        </label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border text-center cursor-pointer transition text-xs font-bold"
-                                   :class="suspendTarget.duration === 'permanent' ? 'bg-[#FAF4ED] border-2 border-[#6B4226] text-[#6B4226] shadow-2xs' : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'">
-                                <input type="radio" name="duration" value="permanent" x-model="suspendTarget.duration" class="sr-only">
-                                <span class="text-base">♾️</span>
-                                <span class="text-[11px] mt-0.5 font-bold">Permanen</span>
-                            </label>
-                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border text-center cursor-pointer transition text-xs font-bold"
-                                   :class="suspendTarget.duration === '1_day' ? 'bg-[#FAF4ED] border-2 border-[#6B4226] text-[#6B4226] shadow-2xs' : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'">
-                                <input type="radio" name="duration" value="1_day" x-model="suspendTarget.duration" class="sr-only">
-                                <span class="text-base">⚡</span>
-                                <span class="text-[11px] mt-0.5 font-bold">1 Hari</span>
-                            </label>
-                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border text-center cursor-pointer transition text-xs font-bold"
-                                   :class="suspendTarget.duration === '3_days' ? 'bg-[#FAF4ED] border-2 border-[#6B4226] text-[#6B4226] shadow-2xs' : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'">
-                                <input type="radio" name="duration" value="3_days" x-model="suspendTarget.duration" class="sr-only">
-                                <span class="text-base">⏱️</span>
-                                <span class="text-[11px] mt-0.5 font-bold">3 Hari</span>
-                            </label>
-                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border text-center cursor-pointer transition text-xs font-bold"
-                                   :class="suspendTarget.duration === '7_days' ? 'bg-[#FAF4ED] border-2 border-[#6B4226] text-[#6B4226] shadow-2xs' : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'">
-                                <input type="radio" name="duration" value="7_days" x-model="suspendTarget.duration" class="sr-only">
-                                <span class="text-base">📅</span>
-                                <span class="text-[11px] mt-0.5 font-bold">7 Hari</span>
-                            </label>
-                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border text-center cursor-pointer transition text-xs font-bold"
-                                   :class="suspendTarget.duration === '30_days' ? 'bg-[#FAF4ED] border-2 border-[#6B4226] text-[#6B4226] shadow-2xs' : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'">
-                                <input type="radio" name="duration" value="30_days" x-model="suspendTarget.duration" class="sr-only">
-                                <span class="text-base">🗓️</span>
-                                <span class="text-[11px] mt-0.5 font-bold">30 Hari</span>
-                            </label>
-                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border text-center cursor-pointer transition text-xs font-bold"
-                                   :class="suspendTarget.duration === 'custom' ? 'bg-[#FAF4ED] border-2 border-[#6B4226] text-[#6B4226] shadow-2xs' : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'">
-                                <input type="radio" name="duration" value="custom" x-model="suspendTarget.duration" class="sr-only">
-                                <span class="text-base">🎯</span>
-                                <span class="text-[11px] mt-0.5 font-bold">Kustom</span>
-                            </label>
-                        </div>
-
-                        {{-- Custom Date Picker --}}
-                        <div x-show="suspendTarget.duration === 'custom'" x-cloak class="mt-2.5 p-3 bg-[#FAF4ED]/60 border border-[#EAE1D7] rounded-xl">
-                            <label class="block text-[11px] font-bold text-[#54321B] mb-1">Pilih Tanggal & Jam Berakhir:</label>
-                            <input type="datetime-local" name="custom_date"
-                                   class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B4226]/20 focus:border-[#6B4226] bg-white font-medium">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-black text-slate-700 mb-1.5">Alasan Pemblokiran <span class="text-[#6B4226]">*</span></label>
-                        <textarea name="suspension_reason" rows="3" required minlength="5"
-                                  placeholder="Jelaskan alasan pemblokiran secara jelas..."
-                                  class="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6B4226]/20 focus:border-[#6B4226] resize-none font-medium text-slate-800"></textarea>
-                        <p class="text-[10px] text-slate-400 mt-1">Minimal 5 karakter. Alasan akan ditampilkan ke pengguna saat mencoba login.</p>
-                    </div>
-
-                    <div class="flex gap-2.5 pt-2 border-t border-slate-100">
-                        <button type="button" @click="suspendModalOpen = false"
-                                class="flex-1 py-2.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-200 transition cursor-pointer">
-                            Batal
-                        </button>
-                        <button type="submit"
-                                class="flex-1 py-2.5 bg-[#6B4226] hover:bg-[#54321B] text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5">
-                            <span>🚫</span>
-                            <span>Blokir Akun</span>
-                        </button>
-                    </div>
-                </form>
-            </div>
         </div>
     </div>
 

@@ -93,18 +93,12 @@
         @if($matchingStore)
             <div class="bg-gradient-to-r from-white via-[#FAF7F2] to-[#FAF4ED] rounded-2xl border border-[#EAE1D7] p-4 sm:p-5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="flex items-center gap-3.5">
-                    @if(!empty($matchingStore['logo_url']))
-                        <img src="{{ $matchingStore['logo_url'] }}" 
-                             alt="{{ $matchingStore['name'] }}" 
-                             class="w-13 h-13 rounded-2xl object-cover border border-[#EAE1D7] shadow-xs shrink-0 bg-white" />
-                    @else
-                        <div class="w-13 h-13 rounded-2xl bg-red-600 text-white flex items-center justify-center text-2xl font-black shadow-sm shrink-0">
-                            🏬
-                        </div>
-                    @endif
+                    <div class="w-13 h-13 rounded-2xl bg-red-600 text-white flex items-center justify-center text-2xl font-black shadow-sm shrink-0">
+                        🏬
+                    </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <span class="bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase">{{ $matchingStore['badge'] ?? 'MALL' }}</span>
+                            <span class="bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">MALL</span>
                             <h3 class="font-extrabold text-sm sm:text-base text-[#2D241E]">{{ $matchingStore['name'] }}</h3>
                         </div>
                         <div class="flex items-center gap-3 text-[11px] text-[#8A7C70] mt-1 flex-wrap">
@@ -119,7 +113,7 @@
                     </div>
                 </div>
 
-                <a href="{{ $matchingStore['url'] ?? route('search.results', ['q' => $matchingStore['brand']]) }}" 
+                <a href="{{ route('search.results', ['q' => $matchingStore['brand']]) }}" 
                    class="px-5 py-2.5 bg-[#6B4226] hover:bg-[#54321B] text-white text-xs font-bold rounded-xl shadow-xs transition shrink-0 text-center">
                     Kunjungi Toko Resmi ›
                 </a>

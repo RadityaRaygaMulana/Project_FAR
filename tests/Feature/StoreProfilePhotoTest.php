@@ -159,13 +159,13 @@ class StoreProfilePhotoTest extends TestCase
             'name' => 'Keripik Singkong Renyah',
         ]);
 
-        // Visit store page
-        $storeResponse = $this->actingAs($seller)->get(route('store.show', urlencode($store->name)));
+        // Visit public store page
+        $storeResponse = $this->get(route('store.show', urlencode($store->name)));
         $storeResponse->assertOk();
         $storeResponse->assertSee($store->logo_url, false);
 
         // Visit product detail page
-        $productResponse = $this->actingAs($seller)->get(route('product.detail', $product->slug));
+        $productResponse = $this->get(route('product.detail', $product->slug));
         $productResponse->assertOk();
         $productResponse->assertSee($store->logo_url, false);
     }

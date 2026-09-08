@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\User;
 use Database\Seeders\MarketplaceSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -12,8 +11,6 @@ use Tests\TestCase;
 class LimitedPromoTest extends TestCase
 {
     use RefreshDatabase;
-
-    protected User $user;
 
     protected Category $elektronik;
 
@@ -29,8 +26,6 @@ class LimitedPromoTest extends TestCase
     {
         parent::setUp();
         $this->seed(MarketplaceSeeder::class);
-
-        $this->user = User::factory()->create();
 
         $this->elektronik = Category::where('slug', 'elektronik-gadget')->first();
         $this->fashion = Category::where('slug', 'fashion-pakaian')->first();
@@ -74,7 +69,7 @@ class LimitedPromoTest extends TestCase
 
     public function test_limited_promo_page_loads_successfully_and_displays_only_discounted_products(): void
     {
-        $response = $this->actingAs($this->user)->get(route('promo.limited'));
+        $response = $this->get(route('promo.limited'));
 
         $response->assertStatus(200);
         $response->assertSee('Promo Terbatas Spesial Hari Ini');
@@ -83,12 +78,6 @@ class LimitedPromoTest extends TestCase
         // Non-discounted product should not appear on limited promo page
         $response->assertDontSee('Kabel Data Type C Regular');
 
-        // Confirm card links directly to product detail page
-        $response->assertSee(route('product.detail', $this->productDiscount50->slug));
-
-        // Confirm cart button is removed from card
-        $response->assertDontSee('+ Keranjang');
-
         // Confirm there are NO claimable vouchers as requested by user
         $response->assertDontSee('Salin Kode');
         $response->assertDontSee('Klaim Voucher');
@@ -96,7 +85,7 @@ class LimitedPromoTest extends TestCase
 
     public function test_limited_promo_filters_by_category(): void
     {
-        $response = $this->actingAs($this->user)->get(route('promo.limited', ['category' => 'elektronik-gadget']));
+        $response = $this->get(route('promo.limited', ['category' => 'elektronik-gadget']));
 
         $response->assertStatus(200);
         $response->assertSee('TWS Super Bass Flash Deal');
@@ -106,7 +95,7 @@ class LimitedPromoTest extends TestCase
     public function test_limited_promo_filters_by_min_discount(): void
     {
         // 50% filter: only the 50% discounted item should show
-        $response = $this->actingAs($this->user)->get(route('promo.limited', ['min_discount' => 50]));
+        $response = $this->get(route('promo.limited', ['min_discount' => 50]));
 
         $response->assertStatus(200);
         $response->assertSee('TWS Super Bass Flash Deal');
@@ -116,7 +105,7 @@ class LimitedPromoTest extends TestCase
     public function test_limited_promo_filters_by_max_price(): void
     {
         // Max price 100k: TWS is 50k (discounted), Sepatu is 160k
-        $response = $this->actingAs($this->user)->get(route('promo.limited', ['max_price' => 100000]));
+        $response = $this->get(route('promo.limited', ['max_price' => 100000]));
 
         $response->assertStatus(200);
         $response->assertSee('TWS Super Bass Flash Deal');
@@ -126,7 +115,7 @@ class LimitedPromoTest extends TestCase
     public function test_limited_promo_filters_by_limited_stock(): void
     {
         // Limited stock (<= 25): TWS has 15, Sepatu has 50
-        $response = $this->actingAs($this->user)->get(route('promo.limited', ['stock_filter' => 'limited']));
+        $response = $this->get(route('promo.limited', ['stock_filter' => 'limited']));
 
         $response->assertStatus(200);
         $response->assertSee('TWS Super Bass Flash Deal');
@@ -143,7 +132,7 @@ class LimitedPromoTest extends TestCase
 
     public function test_limited_promo_ajax_request_returns_json_without_page_refresh(): void
     {
-        $response = $this->actingAs($this->user)->getJson(route('promo.limited', ['category' => 'elektronik-gadget']), [
+        $response = $this->getJson(route('promo.limited', ['category' => 'elektronik-gadget']), [
             'X-Requested-With' => 'XMLHttpRequest',
         ]);
 

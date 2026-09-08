@@ -27,13 +27,6 @@
             background-color: #F8FAFC;
             color: #1E293B;
         }
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .hide-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
     </style>
 </head>
 <body class="bg-[#F8FAFC] text-[#1E293B] antialiased min-h-screen flex flex-col selection:bg-[#6B4226] selection:text-white"
@@ -149,48 +142,6 @@
                     <span class="text-base">👥</span>
                     <span>Kelola Pengguna</span>
                 </a>
-
-                <a href="{{ route('admin.vouchers.index') }}" 
-                   class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition {{ request()->routeIs('admin.vouchers*') ? 'bg-[#6B4226] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100' }}">
-                    <span class="text-base">🎟️</span>
-                    <span>Kelola Voucher & Jadwal</span>
-                </a>
-
-                <a href="{{ route('admin.redeem-codes.index') }}" 
-                   class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition {{ request()->routeIs('admin.redeem-codes*') ? 'bg-[#6B4226] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100' }}">
-                    <span class="text-base">🎁</span>
-                    <span>Kode Redeem Promo</span>
-                </a>
-
-                @php
-                    $suspendedCount = \App\Models\Store::where('is_suspended', true)->count() + \App\Models\User::where('is_suspended', true)->count();
-                    $pendingAppealsCount = \App\Models\SuspensionAppeal::where('status', 'pending')->count();
-                @endphp
-                <a href="{{ route('admin.monitor') }}"
-                   class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition {{ request()->routeIs('admin.monitor*') ? 'bg-[#6B4226] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100' }}">
-                    <div class="flex items-center gap-3">
-                        <span class="text-base">🔍</span>
-                        <span>Pengawasan Toko</span>
-                    </div>
-                    @if($suspendedCount > 0)
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black {{ request()->routeIs('admin.monitor*') ? 'bg-rose-300 text-rose-950' : 'bg-rose-100 text-rose-800 border border-rose-300' }}">
-                            {{ $suspendedCount }}
-                        </span>
-                    @endif
-                </a>
-
-                <a href="{{ route('admin.appeals.index') }}"
-                   class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition {{ request()->routeIs('admin.appeals*') ? 'bg-[#6B4226] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100' }}">
-                    <div class="flex items-center gap-3">
-                        <span class="text-base">⚖️</span>
-                        <span>Pengajuan Banding</span>
-                    </div>
-                    @if($pendingAppealsCount > 0)
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black {{ request()->routeIs('admin.appeals*') ? 'bg-amber-300 text-amber-950' : 'bg-amber-100 text-amber-900 border border-amber-300' }}">
-                            {{ $pendingAppealsCount }}
-                        </span>
-                    @endif
-                </a>
             </nav>
 
             <!-- Quick System Server Health Card -->
@@ -258,24 +209,6 @@
                         <a href="{{ route('admin.users') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold {{ request()->routeIs('admin.users*') ? 'bg-[#6B4226] text-white' : 'text-slate-700 hover:bg-slate-100' }}">
                             <span>👥</span> <span>Kelola Pengguna</span>
                         </a>
-                        <a href="{{ route('admin.vouchers.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold {{ request()->routeIs('admin.vouchers*') ? 'bg-[#6B4226] text-white' : 'text-slate-700 hover:bg-slate-100' }}">
-                            <span>🎟️</span> <span>Kelola Voucher</span>
-                        </a>
-                        <a href="{{ route('admin.redeem-codes.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold {{ request()->routeIs('admin.redeem-codes*') ? 'bg-[#6B4226] text-white' : 'text-slate-700 hover:bg-slate-100' }}">
-                            <span>🎁</span> <span>Kode Redeem Promo</span>
-                        </a>
-                        <a href="{{ route('admin.monitor') }}" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold {{ request()->routeIs('admin.monitor*') ? 'bg-[#6B4226] text-white' : 'text-slate-700 hover:bg-slate-100' }}">
-                            <div class="flex items-center gap-3"><span>🔍</span> <span>Pengawasan Toko</span></div>
-                            @if(isset($suspendedCount) && $suspendedCount > 0)
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">{{ $suspendedCount }}</span>
-                            @endif
-                        </a>
-                        <a href="{{ route('admin.appeals.index') }}" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold {{ request()->routeIs('admin.appeals*') ? 'bg-[#6B4226] text-white' : 'text-slate-700 hover:bg-slate-100' }}">
-                            <div class="flex items-center gap-3"><span>⚖️</span> <span>Pengajuan Banding</span></div>
-                            @if(isset($pendingAppealsCount) && $pendingAppealsCount > 0)
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300">{{ $pendingAppealsCount }}</span>
-                            @endif
-                        </a>
                     </nav>
                 </div>
 
@@ -333,6 +266,5 @@
 
     </div>
 
-    @stack('scripts')
 </body>
 </html>

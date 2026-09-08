@@ -195,7 +195,7 @@
                 </a>
 
                 <!-- 6. Gratis Ongkir -->
-                <a href="{{ route('gratis.ongkir') }}" class="flex flex-col items-center text-center group cursor-pointer">
+                <a href="#katalog" class="flex flex-col items-center text-center group cursor-pointer">
                     <div class="w-12 h-12 rounded-2xl bg-[#FAF4ED] border border-[#E8DED3] flex items-center justify-center text-2xl group-hover:scale-110 group-hover:bg-[#6B4226] group-hover:text-white transition shadow-2xs mb-2">
                         🚚
                     </div>
@@ -203,7 +203,7 @@
                 </a>
 
                 <!-- 7. Penawaran Spesial -->
-                <a href="{{ route('penawaran.spesial') }}" class="flex flex-col items-center text-center group cursor-pointer">
+                <a href="{{ route('search.results', ['sort' => 'highest_discount']) }}" class="flex flex-col items-center text-center group cursor-pointer">
                     <div class="w-12 h-12 rounded-2xl bg-[#FAF4ED] border border-[#E8DED3] flex items-center justify-center text-2xl group-hover:scale-110 group-hover:bg-[#6B4226] group-hover:text-white transition shadow-2xs mb-2">
                         🏷️
                     </div>
@@ -211,7 +211,7 @@
                 </a>
 
                 <!-- 8. Voucher -->
-                <a href="{{ route('voucher.index') }}" class="flex flex-col items-center text-center group cursor-pointer">
+                <a href="#katalog" class="flex flex-col items-center text-center group cursor-pointer">
                     <div class="w-12 h-12 rounded-2xl bg-[#FAF4ED] border border-[#E8DED3] flex items-center justify-center text-2xl group-hover:scale-110 group-hover:bg-[#6B4226] group-hover:text-white transition shadow-2xs mb-2">
                         🎟️
                     </div>
@@ -219,7 +219,7 @@
                 </a>
 
                 <!-- 9. Produk Baru -->
-                <a href="{{ route('produk.baru') }}" class="flex flex-col items-center text-center group cursor-pointer">
+                <a href="{{ route('search.results', ['sort' => 'newest']) }}" class="flex flex-col items-center text-center group cursor-pointer">
                     <div class="w-12 h-12 rounded-2xl bg-[#FAF4ED] border border-[#E8DED3] flex items-center justify-center text-2xl group-hover:scale-110 group-hover:bg-[#6B4226] group-hover:text-white transition shadow-2xs mb-2">
                         ✨
                     </div>
@@ -393,7 +393,7 @@
                             </a>
 
                             <!-- 6. Gratis Ongkir -->
-                            <a href="{{ route('gratis.ongkir') }}" @click="showCategoryExplorer = false" class="p-4 rounded-2xl border border-[#EAE1D7] bg-[#FAF8F5] hover:bg-[#FAF4ED] hover:border-[#6B4226]/40 transition flex items-start gap-3.5 group">
+                            <a href="#katalog" @click="showCategoryExplorer = false" class="p-4 rounded-2xl border border-[#EAE1D7] bg-[#FAF8F5] hover:bg-[#FAF4ED] hover:border-[#6B4226]/40 transition flex items-start gap-3.5 group">
                                 <div class="w-11 h-11 rounded-xl bg-white border border-[#E8DED3] flex items-center justify-center text-2xl group-hover:scale-105 transition shrink-0">
                                     🚚
                                 </div>
@@ -404,7 +404,7 @@
                             </a>
 
                             <!-- 7. Penawaran Spesial -->
-                            <a href="{{ route('penawaran.spesial') }}" @click="showCategoryExplorer = false" class="p-4 rounded-2xl border border-[#EAE1D7] bg-[#FAF8F5] hover:bg-[#FAF4ED] hover:border-[#6B4226]/40 transition flex items-start gap-3.5 group">
+                            <a href="{{ route('search.results', ['sort' => 'highest_discount']) }}" class="p-4 rounded-2xl border border-[#EAE1D7] bg-[#FAF8F5] hover:bg-[#FAF4ED] hover:border-[#6B4226]/40 transition flex items-start gap-3.5 group">
                                 <div class="w-11 h-11 rounded-xl bg-white border border-[#E8DED3] flex items-center justify-center text-2xl group-hover:scale-105 transition shrink-0">
                                     🏷️
                                 </div>
@@ -415,7 +415,7 @@
                             </a>
 
                             <!-- 8. Voucher -->
-                            <a href="{{ route('voucher.index') }}" @click="showCategoryExplorer = false" class="p-4 rounded-2xl border border-[#EAE1D7] bg-[#FAF8F5] hover:bg-[#FAF4ED] hover:border-[#6B4226]/40 transition flex items-start gap-3.5 group">
+                            <a href="#katalog" @click="showCategoryExplorer = false" class="p-4 rounded-2xl border border-[#EAE1D7] bg-[#FAF8F5] hover:bg-[#FAF4ED] hover:border-[#6B4226]/40 transition flex items-start gap-3.5 group">
                                 <div class="w-11 h-11 rounded-xl bg-white border border-[#E8DED3] flex items-center justify-center text-2xl group-hover:scale-105 transition shrink-0">
                                     🎟️
                                 </div>
@@ -426,7 +426,7 @@
                             </a>
 
                             <!-- 9. Produk Baru -->
-                            <a href="{{ route('produk.baru') }}" @click="showCategoryExplorer = false" class="p-4 rounded-2xl border border-[#EAE1D7] bg-[#FAF8F5] hover:bg-[#FAF4ED] hover:border-[#6B4226]/40 transition flex items-start gap-3.5 group">
+                            <a href="{{ route('search.results', ['sort' => 'newest']) }}" class="p-4 rounded-2xl border border-[#EAE1D7] bg-[#FAF8F5] hover:bg-[#FAF4ED] hover:border-[#6B4226]/40 transition flex items-start gap-3.5 group">
                                 <div class="w-11 h-11 rounded-xl bg-white border border-[#E8DED3] flex items-center justify-center text-2xl group-hover:scale-105 transition shrink-0">
                                     ✨
                                 </div>
