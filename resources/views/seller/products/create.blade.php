@@ -309,6 +309,125 @@
                 </div>
             </div>
 
+            <!-- Pilihan Metode Pembayaran (Multi Select) -->
+            <div class="pt-4 border-t border-[#F2EAE0] space-y-3">
+                <input type="hidden" name="payment_methods_submitted" value="1">
+                <div>
+                    <label class="block text-xs font-bold text-[#2D241E]">
+                        Metode Pembayaran yang Diterima <span class="text-red-500">*</span>
+                    </label>
+                    <p class="text-[11px] text-[#8A7C70] mt-0.5">
+                        Pilih metode pembayaran yang kamu sediakan untuk produk ini (bisa pilih lebih dari satu, minimal 1 metode harus aktif).
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- QRIS -->
+                    <label class="relative flex items-start gap-3 p-3 rounded-2xl border border-[#EAE1D7] bg-[#FAF8F5] hover:bg-[#FAF4ED] cursor-pointer transition select-none">
+                        <input type="checkbox" 
+                               name="allowed_payment_methods[]" 
+                               value="qris" 
+                               {{ in_array('qris', old('allowed_payment_methods', ['qris', 'cod'])) ? 'checked' : '' }}
+                               class="w-4 h-4 text-[#6B4226] border-stone-300 rounded focus:ring-[#6B4226] mt-0.5 cursor-pointer">
+                        <div class="flex-1 min-w-0">
+                            <span class="text-xs font-bold text-[#2D241E] block">📱 QRIS Instan</span>
+                            <span class="text-[10px] text-[#8A7C70] block mt-0.5">Semua E-Wallet & Bank</span>
+                        </div>
+                    </label>
+
+                    <!-- COD -->
+                    <label class="relative flex items-start gap-3 p-3 rounded-2xl border border-[#EAE1D7] bg-[#FAF8F5] hover:bg-[#FAF4ED] cursor-pointer transition select-none">
+                        <input type="checkbox" 
+                               name="allowed_payment_methods[]" 
+                               value="cod" 
+                               {{ in_array('cod', old('allowed_payment_methods', ['qris', 'cod'])) ? 'checked' : '' }}
+                               class="w-4 h-4 text-[#6B4226] border-stone-300 rounded focus:ring-[#6B4226] mt-0.5 cursor-pointer">
+                        <div class="flex-1 min-w-0">
+                            <span class="text-xs font-bold text-[#2D241E] block">💵 COD (Bayar di Tempat)</span>
+                            <span class="text-[10px] text-[#8A7C70] block mt-0.5">Bayar tunai ke kurir</span>
+                        </div>
+                    </label>
+                </div>
+                @error('allowed_payment_methods')
+                    <p class="text-[11px] text-red-600 font-medium">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <!-- Shipping & Voucher Promo Settings -->
+            <div class="pt-4 border-t border-[#F2EAE0] space-y-4" x-data="{ isFreeShipping: {{ old('is_free_shipping') ? 'true' : 'false' }} }">
+                <div>
+                    <h3 class="text-sm font-bold text-[#2D241E] flex items-center gap-1.5">
+                        <span>🚚</span>
+                        <span>Pengaturan Bebas Ongkir & Voucher</span>
+                    </h3>
+                    <p class="text-xs text-[#8A7C70] mt-0.5">
+                        Tentukan apakah produk ini menyediakan promo gratis ongkir (dan batas minimal belanja) serta izin penggunaan voucher diskon.
+                    </p>
+                </div>
+
+                <div class="space-y-3">
+                    <!-- Free Shipping Option -->
+                    <div class="p-4 rounded-2xl border border-[#EAE1D7] bg-[#FAF8F5] space-y-3">
+                        <label class="flex items-start gap-3 cursor-pointer select-none">
+                            <input type="hidden" name="is_free_shipping" value="0">
+                            <input type="checkbox" 
+                                   name="is_free_shipping" 
+                                   value="1" 
+                                   x-model="isFreeShipping"
+                                   {{ old('is_free_shipping') ? 'checked' : '' }}
+                                   class="w-4.5 h-4.5 text-[#6B4226] border-stone-300 rounded focus:ring-[#6B4226] mt-0.5 cursor-pointer">
+                            <div class="flex-1 min-w-0">
+                                <span class="text-xs font-bold text-[#2D241E] block">Sediakan Promo Bebas Ongkir (Gratis Ongkir) 🚚</span>
+                                <span class="text-[11px] text-[#8A7C70] block mt-0.5">Aktifkan jika produk ini memberikan gratis ongkir bagi pembeli.</span>
+                            </div>
+                        </label>
+
+                        <!-- Min Spend for Free Shipping (conditionally shown) -->
+                        <div x-show="isFreeShipping" x-cloak class="pt-2 pl-7.5 border-t border-[#EAE1D7]/60">
+                            <label for="free_shipping_min_spend" class="block text-xs font-bold text-[#2D241E] mb-1">
+                                Minimal Belanja untuk Bebas Ongkir (Rp)
+                            </label>
+                            <div class="relative max-w-xs">
+                                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#8A7C70]">Rp</span>
+                                <input type="number" 
+                                       name="free_shipping_min_spend" 
+                                       id="free_shipping_min_spend" 
+                                       min="0" 
+                                       step="1000"
+                                       value="{{ old('free_shipping_min_spend', 0) }}" 
+                                       placeholder="0"
+                                       class="w-full pl-10 pr-4 py-2.5 bg-white border border-[#EAE1D7] rounded-xl text-xs sm:text-sm text-[#2D241E] focus:outline-hidden focus:ring-2 focus:ring-[#6B4226]/20">
+                            </div>
+                            <p class="text-[11px] text-[#8A7C70] mt-1">
+                                Isi <strong>0</strong> jika gratis ongkir berlaku tanpa syarat minimal belanja (langsung gratis ongkir).
+                            </p>
+                            @error('free_shipping_min_spend')
+                                <p class="text-[11px] text-red-600 font-medium mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <!-- Allow Vouchers Option -->
+                    <div class="p-4 rounded-2xl border border-[#EAE1D7] bg-[#FAF8F5]">
+                        <label class="flex items-start gap-3 cursor-pointer select-none">
+                            <input type="hidden" name="allow_vouchers" value="0">
+                            <input type="checkbox" 
+                                   name="allow_vouchers" 
+                                   value="1" 
+                                   {{ old('allow_vouchers', '1') == '1' ? 'checked' : '' }}
+                                   class="w-4.5 h-4.5 text-[#6B4226] border-stone-300 rounded focus:ring-[#6B4226] mt-0.5 cursor-pointer">
+                            <div class="flex-1 min-w-0">
+                                <span class="text-xs font-bold text-[#2D241E] block">Izinkan Penggunaan Voucher Marketplace 🎟️</span>
+                                <span class="text-[11px] text-[#8A7C70] block mt-0.5">Jika dicentang, pembeli dapat menggunakan voucher diskon atau cashback pada produk ini. Hilangkan centang jika produk tidak boleh dikenakan potongan voucher.</span>
+                            </div>
+                        </label>
+                        @error('allow_vouchers')
+                            <p class="text-[11px] text-red-600 font-medium mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
             <!-- Publish Status Checkbox -->
             <div class="pt-2 border-t border-[#F2EAE0]">
                 <label class="flex items-center gap-3 cursor-pointer select-none">

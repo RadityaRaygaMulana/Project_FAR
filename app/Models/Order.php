@@ -32,9 +32,14 @@ class Order extends Model
         'customer_notes',
         'payment_method',
         'coupon_code',
+        'redeem_code',
+        'redeem_discount_amount',
+        'shipping_voucher_code',
+        'discount_voucher_code',
         'discount_amount',
         'total_amount',
         'shipping_cost',
+        'shipping_discount_amount',
         'shipping_courier',
         'tracking_number',
         'grand_total',
@@ -67,6 +72,7 @@ class Order extends Model
             'discount_amount' => 'integer',
             'total_amount' => 'integer',
             'shipping_cost' => 'integer',
+            'shipping_discount_amount' => 'integer',
             'grand_total' => 'integer',
             'delivered_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -95,6 +101,16 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * Get user voucher usages for this order.
+     *
+     * @return HasMany<UserVoucher, $this>
+     */
+    public function userVouchers(): HasMany
+    {
+        return $this->hasMany(UserVoucher::class);
     }
 
     /**

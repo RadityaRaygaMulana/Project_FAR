@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CheckSuspended;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsSeller;
 use App\Http\Middleware\PreventBackHistory;
@@ -18,11 +19,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->appendToGroup('web', PreventBackHistory::class);
         $middleware->appendToGroup('web', TrackSiteVisit::class);
+        $middleware->appendToGroup('web', CheckSuspended::class);
         $middleware->alias([
             'prevent-back-history' => PreventBackHistory::class,
             'preventbackhistory' => PreventBackHistory::class,
             'admin' => EnsureUserIsAdmin::class,
             'seller' => EnsureUserIsSeller::class,
+            'check-suspended' => CheckSuspended::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

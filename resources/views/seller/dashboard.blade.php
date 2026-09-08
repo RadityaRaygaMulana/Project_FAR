@@ -53,13 +53,99 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-2.5 shrink-0">
+            <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+                @if(!$store->isSuspended())
+                    <form action="{{ route('seller.store.toggle_status') }}" method="POST" class="inline">
+                        @csrf
+                        @if($store->isClosed())
+                            <button type="submit" 
+                                    class="px-4 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-amber-950 font-black text-xs shadow-md transition transform active:scale-95 flex items-center gap-2 cursor-pointer"
+                                    title="Toko sedang libur. Klik untuk buka kembali!">
+                                <span>▶️</span>
+                                <span>Buka Toko Sekarang</span>
+                            </button>
+                        @else
+                            <button type="submit" 
+                                    onclick="return confirm('Apakah kamu yakin ingin menutup toko sementara (mode libur)? Pelanggan tidak akan dapat membuat pesanan baru hingga toko dibuka kembali.')"
+                                    class="px-4 py-3 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs border border-white/30 shadow-md transition transform active:scale-95 flex items-center gap-2 cursor-pointer"
+                                    title="Klik untuk mengubah status toko ke tutup sementara (mode libur)">
+                                <span>⏸️</span>
+                                <span>Tutup Toko Sementara</span>
+                            </button>
+                        @endif
+                    </form>
+                @endif
+
                 <a href="{{ route('seller.products.create') }}" 
                    class="px-5 py-3 rounded-xl bg-white text-[#6B4226] hover:bg-[#FAF4ED] font-black text-xs shadow-md transition transform active:scale-95 flex items-center gap-2">
                     <span>➕</span>
                     <span>Tambah Produk Baru</span>
                 </a>
             </div>
+        </div>
+    </div>
+
+    <!-- OPERATIONAL STATUS CARD -->
+    <div class="rounded-2xl p-4 sm:p-5 border transition-all shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 {{ $store->isClosed() ? 'bg-amber-50/80 border-amber-200' : ($store->isSuspended() ? 'bg-red-50/80 border-red-200' : 'bg-emerald-50/70 border-emerald-200') }}">
+        <div class="flex items-center gap-3.5">
+            <div class="w-11 h-11 rounded-xl flex items-center justify-center text-2xl shrink-0 {{ $store->isClosed() ? 'bg-amber-100' : ($store->isSuspended() ? 'bg-red-100' : 'bg-emerald-100') }}">
+                @if($store->isSuspended())
+                    🚫
+                @elseif($store->isClosed())
+                    ⏸️
+                @else
+                    🟢
+                @endif
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h3 class="text-sm font-extrabold text-[#2D241E]">
+                        Status Operasional: 
+                        <span class="{{ $store->isClosed() ? 'text-amber-800' : ($store->isSuspended() ? 'text-red-700' : 'text-emerald-700') }}">
+                            {{ $store->status_label }}
+                        </span>
+                    </h3>
+                    @if($store->isClosed())
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-200 text-amber-900">Mode Libur</span>
+                    @elseif($store->isOpen())
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-200 text-emerald-900">Melayani Pesanan</span>
+                    @endif
+                </div>
+                <p class="text-xs text-[#7A6C60] mt-0.5">
+                    @if($store->isSuspended())
+                        Toko kamu sedang dinonaktifkan sementara oleh administrator.
+                    @elseif($store->isClosed())
+                        Toko sedang tidak beroperasi sementara. Pembeli tetap dapat melihat etalase tokomu, namun transaksi pembelian dinonaktifkan hingga toko dibuka kembali.
+                    @else
+                        Toko aktif dan siap melayani transaksi pesanan pembeli di NusantaraMart.
+                    @endif
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+            @if(!$store->isSuspended())
+                <form action="{{ route('seller.store.toggle_status') }}" method="POST">
+                    @csrf
+                    @if($store->isClosed())
+                        <button type="submit" 
+                                class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer">
+                            <span>▶️</span>
+                            <span>Buka Toko Kembali</span>
+                        </button>
+                    @else
+                        <button type="submit" 
+                                onclick="return confirm('Apakah kamu ingin menutup toko sementara (mode libur)? Pembeli tidak akan dapat melakukan checkout hingga toko dibuka kembali.')"
+                                class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer">
+                            <span>⏸️</span>
+                            <span>Tutup Sementara (Mode Libur)</span>
+                        </button>
+                    @endif
+                </form>
+            @endif
+            <a href="{{ route('seller.settings') }}" class="px-3.5 py-2 rounded-xl bg-white hover:bg-[#FAF4ED] text-[#6B4226] border border-[#EAE1D7] text-xs font-bold transition shadow-2xs">
+                ⚙️ Pengaturan Toko
+            </a>
         </div>
     </div>
 

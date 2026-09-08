@@ -53,7 +53,7 @@ class StoreAdvantagesTest extends TestCase
             'description' => 'Deskripsi keripik tempe istimewa warisan leluhur.',
         ]);
 
-        $response = $this->get(route('product.detail', $product->slug));
+        $response = $this->actingAs($seller)->get(route('product.detail', $product->slug));
         $response->assertOk();
         $response->assertSee('Keunggulan Belanja di Toko Barokah Jaya:');
         $response->assertSee('Garansi uang kembali 100% jika produk cacat.');
@@ -75,7 +75,7 @@ class StoreAdvantagesTest extends TestCase
             'name' => 'Kerupuk Ikan Gurih',
         ]);
 
-        $response = $this->get(route('product.detail', $product->slug));
+        $response = $this->actingAs($seller)->get(route('product.detail', $product->slug));
         $response->assertOk();
         $response->assertSee('Keunggulan Belanja di Toko Standar:');
         $response->assertSee('Produk 100% Original langsung dari distributor', false);

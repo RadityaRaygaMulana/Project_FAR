@@ -36,7 +36,8 @@
 <body class="bg-[#FAF8F5] text-[#2D241E] antialiased selection:bg-[#6B4226] selection:text-white"
       x-data="snackCart()"
       x-init="initCart()"
-      @add-to-cart.window="addToCart($event.detail.product, $event.detail.quantity)">
+      @add-to-cart.window="addToCart($event.detail.product, $event.detail.quantity)"
+      @require-auth.window="showLoginRequiredModal($event.detail)">
 
     <!-- Main Navigation Header (Hidden on Search Discovery Page) -->
     @unless(request()->routeIs('search'))
@@ -57,7 +58,8 @@
                     </div>
                 </a>
 
-                <!-- Global Search Input (Matched 1:1 with Search Page) -->
+                <!-- Global Search Input (Only on Home Page) -->
+                @if(request()->routeIs('home'))
                 <div class="flex-1 max-w-2xl hidden md:block">
                     <form action="{{ route('search') }}" method="GET" class="relative flex items-center">
                         <div class="absolute inset-y-0 left-0 pl-4 sm:pl-5 flex items-center pointer-events-none text-[#8A7C70]">
@@ -80,6 +82,7 @@
                         </div>
                     </form>
                 </div>
+                @endif
 
                 <!-- Right Action Icons: Chat, Cart & Profile -->
                 <div class="flex items-center gap-2.5 shrink-0">
@@ -328,6 +331,72 @@
         </div>
     </div>
 
+    <!-- Clean & Minimalist Auth Modal -->
+    <div x-show="loginModalOpen" 
+         x-cloak 
+         class="fixed inset-0 z-50 overflow-y-auto"
+         aria-labelledby="login-modal-title" role="dialog" aria-modal="true">
+        <!-- Backdrop -->
+        <div x-show="loginModalOpen" 
+             x-transition:enter="ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+             @click="closeAuthModal()"></div>
+
+        <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+            <div x-show="loginModalOpen"
+                 x-transition:enter="ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm border border-[#EAE1D7] p-6">
+                
+                <!-- Close Button -->
+                <button type="button" 
+                        @click="closeAuthModal()"
+                        class="absolute top-4 right-4 text-[#8A7C70] hover:text-[#2D241E] p-1 rounded-lg hover:bg-[#FAF8F5] transition cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+
+                <div class="text-center pt-2">
+                    <!-- Clean Simple Icon -->
+                    <div class="w-12 h-12 mx-auto rounded-full bg-[#FAF4ED] text-[#6B4226] flex items-center justify-center text-2xl mb-3.5">
+                        <span x-text="authModal.icon || '🔒'"></span>
+                    </div>
+
+                    <!-- Clean Title & Message -->
+                    <h3 class="text-base sm:text-lg font-bold text-[#2D241E] mb-1.5" 
+                        id="login-modal-title"
+                        x-text="authModal.title">
+                    </h3>
+                    <p class="text-xs sm:text-sm text-[#7A6C60] leading-relaxed mb-6"
+                       x-text="authModal.message">
+                    </p>
+
+                    <!-- Simple Action Buttons -->
+                    <div class="space-y-2">
+                        <a href="{{ route('login') }}"
+                           class="w-full py-2.5 px-4 rounded-xl bg-[#6B4226] hover:bg-[#54321B] text-white font-bold text-xs sm:text-sm flex items-center justify-center transition cursor-pointer shadow-2xs">
+                            Masuk
+                        </a>
+                        <a href="{{ route('register') }}"
+                           class="w-full py-2.5 px-4 rounded-xl border border-[#EAE1D7] hover:bg-[#FAF8F5] text-[#5A4B40] font-semibold text-xs sm:text-sm flex items-center justify-center transition cursor-pointer">
+                            Daftar Akun
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Ultra-Premium Marketplace Footer (Hidden on Official Invoice Detail) -->
     @unless(request()->routeIs('order.detail'))
     <footer class="bg-gradient-to-b from-[#54321B] via-[#422210] to-[#2D160A] text-[#FAF4ED] pt-14 pb-12 border-t border-[#6B4226]/40 mt-20 relative overflow-hidden">
@@ -482,6 +551,7 @@
     <!-- Cart Javascript Handler -->
     <script>
         const currentAuthUserId = {{ Auth::id() ? Auth::id() : 'null' }};
+        const currentAuthStoreId = {{ Auth::user()?->store?->id ? Auth::user()->store->id : 'null' }};
 
         function getCartStorageKey() {
             return currentAuthUserId ? `nusantaramart_cart_user_${currentAuthUserId}` : 'nusantaramart_cart_guest';
@@ -501,22 +571,47 @@
         function snackCart() {
             return {
                 items: [],
+                loginModalOpen: false,
+                authModal: {
+                    icon: '🛒',
+                    title: 'Masuk Terlebih Dahulu',
+                    message: 'Kamu perlu masuk (login) ke akunmu terlebih dahulu untuk memasukkan produk ke keranjang belanja dan menikmati transaksi yang aman.'
+                },
                 toast: {
                     show: false,
                     message: ''
                 },
+                showLoginRequiredModal(options = {}) {
+                    this.authModal.icon = (options && options.icon) || '🛒';
+                    this.authModal.title = (options && options.title) || 'Masuk Terlebih Dahulu';
+                    this.authModal.message = (options && options.message) || 'Kamu perlu masuk (login) ke akunmu terlebih dahulu untuk memasukkan produk ke keranjang belanja dan menikmati transaksi yang aman.';
+                    this.loginModalOpen = true;
+                },
+                closeAuthModal() {
+                    this.loginModalOpen = false;
+                },
                 initCart() {
                     window.snackCart = this;
+
+                    // Guest users cannot store or add items to cart
+                    if (!currentAuthUserId) {
+                        this.items = [];
+                        try {
+                            localStorage.removeItem('nusantaramart_cart_guest');
+                            localStorage.removeItem('nusantaramart_cart');
+                            localStorage.removeItem('snackaroo_cart');
+                        } catch (e) {}
+                        return;
+                    }
+
                     const key = getCartStorageKey();
 
-                    if (currentAuthUserId) {
-                        // For logged-in user: migrate once from legacy global key if user cart not yet initialized
-                        const userSaved = localStorage.getItem(key);
-                        if (!userSaved) {
-                            const oldShared = localStorage.getItem('nusantaramart_cart') || localStorage.getItem('snackaroo_cart');
-                            if (oldShared) {
-                                localStorage.setItem(key, oldShared);
-                            }
+                    // For logged-in user: migrate once from legacy global key if user cart not yet initialized
+                    const userSaved = localStorage.getItem(key);
+                    if (!userSaved) {
+                        const oldShared = localStorage.getItem('nusantaramart_cart') || localStorage.getItem('snackaroo_cart');
+                        if (oldShared) {
+                            localStorage.setItem(key, oldShared);
                         }
                     }
 
@@ -536,10 +631,21 @@
                     }
                 },
                 saveCart() {
+                    if (!currentAuthUserId) return;
                     const key = getCartStorageKey();
                     localStorage.setItem(key, JSON.stringify(this.items));
                 },
                 addToCart(product, quantity = 1) {
+                    if (!currentAuthUserId) {
+                        this.showLoginRequiredModal();
+                        return;
+                    }
+
+                    if (currentAuthStoreId && product.store_id && Number(product.store_id) === Number(currentAuthStoreId)) {
+                        this.showToast('Kamu tidak dapat membeli produk dari tokomu sendiri. 🏪');
+                        return;
+                    }
+
                     const qty = parseInt(quantity) || 1;
                     const cartKey = product.variant_id ? `${product.id}_${product.variant_id}` : `${product.id}`;
                     const existing = this.items.find(i => (i.cartKey || i.id) == cartKey);
@@ -549,6 +655,7 @@
                     } else {
                         this.items.push({
                             id: product.id,
+                            store_id: product.store_id || null,
                             cartKey: cartKey,
                             name: product.name,
                             price: product.price,
@@ -567,6 +674,16 @@
                     this.showToast(`"${product.name}${variantText}" (${qty} item) ditambahkan ke keranjang belanja! 🛍️`);
                 },
                 buyNow(product, quantity = 1) {
+                    if (!currentAuthUserId) {
+                        this.showLoginRequiredModal();
+                        return;
+                    }
+
+                    if (currentAuthStoreId && product.store_id && Number(product.store_id) === Number(currentAuthStoreId)) {
+                        this.showToast('Kamu tidak dapat membeli produk dari tokomu sendiri. 🏪');
+                        return;
+                    }
+
                     const qty = parseInt(quantity) || 1;
                     const cartKey = product.variant_id ? `${product.id}_${product.variant_id}` : `${product.id}`;
                     
@@ -580,6 +697,7 @@
                     } else {
                         this.items.push({
                             id: product.id,
+                            store_id: product.store_id || null,
                             cartKey: cartKey,
                             name: product.name,
                             price: product.price,
@@ -628,38 +746,25 @@
             }
         }
 
+        window.showAuthModal = function(options = {}) {
+            if (window.snackCart && typeof window.snackCart.showLoginRequiredModal === 'function') {
+                window.snackCart.showLoginRequiredModal(options);
+            } else {
+                window.location.href = '{{ route('login') }}';
+            }
+        };
+
         window.addToCartGlobal = function(product, quantity = 1) {
+            if (!currentAuthUserId) {
+                window.showAuthModal({
+                    icon: '🛒',
+                    title: 'Masukkan ke Keranjang',
+                    message: 'Yuk masuk ke akunmu terlebih dahulu untuk menyimpan produk pilihanmu ke keranjang belanja.'
+                });
+                return;
+            }
             if (window.snackCart) {
                 window.snackCart.addToCart(product, quantity);
-            } else {
-                const key = getCartStorageKey();
-                const saved = localStorage.getItem(key);
-                let items = [];
-                if (saved) {
-                    try { items = JSON.parse(saved); } catch(e) { items = []; }
-                }
-                const qty = parseInt(quantity) || 1;
-                const cartKey = product.variant_id ? `${product.id}_${product.variant_id}` : `${product.id}`;
-                const existing = items.find(i => (i.cartKey || i.id) == cartKey);
-                if (existing) {
-                    existing.quantity += qty;
-                } else {
-                    items.push({
-                        id: product.id,
-                        cartKey: cartKey,
-                        name: product.name,
-                        price: product.price,
-                        brand: product.brand || 'NusantaraMart',
-                        badge: product.badge || 'Official',
-                        icon: product.icon || '🛍️',
-                        image_url: product.image_url || null,
-                        variant_id: product.variant_id || null,
-                        variant_name: product.variant_name || null,
-                        quantity: qty,
-                        selected: true
-                    });
-                }
-                localStorage.setItem(key, JSON.stringify(items));
             }
         };
 

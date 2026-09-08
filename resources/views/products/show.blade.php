@@ -30,6 +30,9 @@
          showVariantCardModal: false,
          modalMode: 'cart',
          validationError: '',
+         isOwnProduct: {{ (Auth::check() && $product->isOwnedBy(Auth::user())) ? 'true' : 'false' }},
+         isStoreClosed: {{ ($product->store && $product->store->isClosed()) ? 'true' : 'false' }},
+         isStoreSuspended: {{ ($product->store && $product->store->isSuspended()) ? 'true' : 'false' }},
 
          // Store Follow State
          isFollowing: {{ $isFollowingStore ? 'true' : 'false' }},
@@ -80,6 +83,29 @@
              }
          },
          openCardModal(mode = 'cart') {
+             if (this.isStoreSuspended) {
+                 alert('Toko ini sedang dinonaktifkan oleh administrator dan tidak dapat menerima pesanan.');
+                 return;
+             }
+             if (this.isStoreClosed) {
+                 alert('Toko sedang tutup sementara (mode libur) dan belum dapat melayani pesanan saat ini.');
+                 return;
+             }
+             if (this.isOwnProduct) {
+                 alert('Kamu tidak dapat membeli produk dari tokomu sendiri.');
+                 return;
+             }
+             @guest
+                 window.showAuthModal({
+                     icon: mode === 'buy' ? '⚡' : '🛒',
+                     title: mode === 'buy' ? 'Beli Produk Sekarang' : 'Masukkan ke Keranjang',
+                     message: mode === 'buy'
+                         ? 'Yuk masuk ke akunmu terlebih dahulu untuk langsung membeli produk pilihanmu dan checkout dengan aman.'
+                         : 'Yuk masuk ke akunmu terlebih dahulu untuk menyimpan produk ini ke keranjang belanja kamu.'
+                 });
+                 return;
+             @endguest
+
              this.modalMode = mode;
              if (this.hasVariants && !this.selectedVariant && this.variants.length > 0) {
                  this.selectVariant(this.variants[0]);
@@ -91,12 +117,28 @@
              this.validationError = '';
          },
          submitCardAction() {
+             @guest
+                 window.showAuthModal({
+                     icon: this.modalMode === 'buy' ? '⚡' : '🛒',
+                     title: this.modalMode === 'buy' ? 'Beli Produk Sekarang' : 'Masukkan ke Keranjang',
+                     message: this.modalMode === 'buy'
+                         ? 'Yuk masuk ke akunmu terlebih dahulu untuk langsung membeli produk pilihanmu dan checkout dengan aman.'
+                         : 'Yuk masuk ke akunmu terlebih dahulu untuk menyimpan produk ini ke keranjang belanja kamu.'
+                 });
+                 return;
+             @endguest
+
              if (this.hasVariants && !this.selectedVariant) {
                  this.validationError = 'Silakan pilih varian terlebih dahulu!';
                  return;
              }
+             if (this.isOwnProduct) {
+                 alert('Kamu tidak dapat membeli produk dari tokomu sendiri.');
+                 return;
+             }
              const productPayload = {
                  id: {{ $product->id }},
+                 store_id: {{ $product->store_id ? $product->store_id : 'null' }},
                  name: '{{ addslashes($product->name) }}',
                  price: this.currentPrice,
                  brand: '{{ addslashes($product->brand ?? 'NusantaraMart') }}',
@@ -104,7 +146,15 @@
                  icon: '{{ $product->category->icon ?? '🛍️' }}',
                  image_url: (this.selectedVariant && this.selectedVariant.image) ? this.selectedVariant.image : this.currentPhoto,
                  variant_id: this.selectedVariant ? this.selectedVariant.id : null,
-                 variant_name: this.selectedVariant ? this.selectedVariant.name : null
+                 variant_name: this.selectedVariant ? this.selectedVariant.name : null,
+                 allowed_payment_methods: {{ json_encode($product->allowed_payment_methods) }},
+                 is_free_shipping: {{ $product->is_free_shipping ? 'true' : 'false' }},
+                 free_shipping_min_spend: {{ (int) ($product->free_shipping_min_spend ?? 0) }},
+                 allow_vouchers: {{ $product->allow_vouchers ? 'true' : 'false' }},
+                 slug: '{{ $product->slug }}',
+                 store_name: '{{ addslashes($product->store ? $product->store->name : ($product->brand ?? 'NusantaraMart')) }}',
+                 store_slug: '{{ $product->store ? $product->store->slug : '' }}',
+                 store_city: '{{ addslashes($product->store ? ($product->store->city ?? 'Indonesia') : 'Indonesia') }}'
              };
 
              if (this.modalMode === 'buy') {
@@ -130,10 +180,30 @@
 
              this.showVariantCardModal = false;
          },
+         addToCart(product, qty = 1) {
+             @guest
+                 window.showAuthModal({
+                     icon: '🛒',
+                     title: 'Masukkan ke Keranjang',
+                     message: 'Yuk masuk ke akunmu terlebih dahulu untuk menyimpan produk ini ke keranjang belanja kamu.'
+                 });
+                 return;
+             @endguest
+
+             if (window.snackCart) {
+                 window.snackCart.addToCart(product, qty);
+             } else if (typeof window.addToCartGlobal === 'function') {
+                 window.addToCartGlobal(product, qty);
+             }
+         },
 
          async toggleFollow() {
              @guest
-                 window.location.href = '{{ route('login') }}';
+                 window.showAuthModal({
+                     icon: '🏪',
+                     title: 'Ikuti Toko Resmi',
+                     message: 'Yuk masuk ke akunmu terlebih dahulu untuk mengikuti toko ini dan dapatkan info produk serta voucher diskon eksklusif!'
+                 });
                  return;
              @endguest
 
@@ -276,8 +346,13 @@
                     </div>
                     <div class="p-3 bg-[#FAF8F5] rounded-2xl border border-[#F2EAE0] text-center space-y-1">
                         <span class="text-lg block">🚚</span>
-                        <p class="text-[11px] font-bold text-[#2D241E] leading-tight">Bebas Ongkir</p>
-                        <p class="text-[9px] text-[#8A7C70]">Seluruh Indonesia</p>
+                        @if($product->is_free_shipping)
+                            <p class="text-[11px] font-bold text-emerald-700 leading-tight">Bebas Ongkir</p>
+                            <p class="text-[9px] text-[#8A7C70]">{{ $product->free_shipping_min_spend > 0 ? 'Min. ' . 'Rp ' . number_format($product->free_shipping_min_spend, 0, ',', '.') : 'Tanpa Min. Belanja' }}</p>
+                        @else
+                            <p class="text-[11px] font-bold text-[#2D241E] leading-tight">Ongkir Standar</p>
+                            <p class="text-[9px] text-[#8A7C70]">Mulai Rp 15.000</p>
+                        @endif
                     </div>
                     <div class="p-3 bg-[#FAF8F5] rounded-2xl border border-[#F2EAE0] text-center space-y-1">
                         <span class="text-lg block">🔄</span>
@@ -365,6 +440,55 @@
                                     <span class="font-bold text-rose-600">Level {{ $product->spiciness_level }} 🔥</span>
                                 </div>
                             @endif
+                            <div class="flex items-center justify-between sm:justify-start gap-3 col-span-1 sm:col-span-2 pt-2 border-t border-[#F2EAE0]">
+                                <span class="text-[#8A7C70] w-28 shrink-0">Pembayaran:</span>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    @if($product->allowsPaymentMethod('qris'))
+                                        <span class="px-2 py-0.5 rounded-lg bg-[#FAF4ED] text-[#6B4226] border border-[#6B4226]/20 font-bold text-[11px] flex items-center gap-1">
+                                            <span>📱</span>
+                                            <span>QRIS</span>
+                                        </span>
+                                    @endif
+                                    @if($product->allowsPaymentMethod('cod'))
+                                        <span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[11px] flex items-center gap-1">
+                                            <span>💵</span>
+                                            <span>Bisa COD</span>
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between sm:justify-start gap-3 col-span-1 sm:col-span-2 pt-2 border-t border-[#F2EAE0]">
+                                <span class="text-[#8A7C70] w-28 shrink-0">Pengiriman:</span>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    @if($product->is_free_shipping)
+                                        <span class="px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[11px] flex items-center gap-1">
+                                            <span>🚚</span>
+                                            <span>Bebas Ongkir {{ $product->free_shipping_min_spend > 0 ? '(Min. Belanja Rp ' . number_format($product->free_shipping_min_spend, 0, ',', '.') . ')' : '(Tanpa Min. Belanja)' }}</span>
+                                        </span>
+                                    @else
+                                        <span class="px-2.5 py-0.5 rounded-lg bg-[#FAF8F5] text-[#5A4B40] border border-[#EAE1D7] font-medium text-[11px] flex items-center gap-1">
+                                            <span>🚚</span>
+                                            <span>Ongkir Standar (Mulai Rp 15.000)</span>
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between sm:justify-start gap-3 col-span-1 sm:col-span-2 pt-2 border-t border-[#F2EAE0]">
+                                <span class="text-[#8A7C70] w-28 shrink-0">Voucher Diskon:</span>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    @if($product->allow_vouchers)
+                                        <span class="px-2.5 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 font-bold text-[11px] flex items-center gap-1">
+                                            <span>🎟️</span>
+                                            <span>Mendukung Voucher Promo & Diskon</span>
+                                        </span>
+                                    @else
+                                        <span class="px-2.5 py-0.5 rounded-lg bg-stone-100 text-stone-600 border border-stone-200 font-medium text-[11px] flex items-center gap-1">
+                                            <span>🚫</span>
+                                            <span>Tidak Dapat Menggunakan Voucher</span>
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -441,35 +565,62 @@
                         <!-- Purchase Action Buttons (Opens Variant Card Modal) -->
                         <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-2">
                             <!-- Chat Seller Button -->
-                            <form action="{{ route('chat.start') }}" method="POST" class="sm:col-span-3">
-                                @csrf
-                                <input type="hidden" name="product_id" value="{{ $product->id }}">
-                                @if($product->store_id)
-                                    <input type="hidden" name="store_id" value="{{ $product->store_id }}">
-                                @endif
-                                <button type="submit"
+                            @guest
+                                <button type="button"
+                                        @click="window.showAuthModal({ icon: '💬', title: 'Chat dengan Penjual', message: 'Yuk masuk ke akunmu terlebih dahulu untuk bertanya langsung seputar produk ini kepada penjual toko.' })"
                                         title="Tanyakan produk ini langsung ke penjual"
-                                        class="w-full py-3.5 px-3 rounded-xl border-2 border-[#6B4226] bg-[#FAF4ED] text-[#6B4226] hover:bg-[#F5EBE1] font-black text-xs flex items-center justify-center gap-1.5 transition active:scale-[0.98] cursor-pointer shadow-2xs">
+                                        class="sm:col-span-3 w-full py-3.5 px-3 rounded-xl border-2 border-[#6B4226] bg-[#FAF4ED] text-[#6B4226] hover:bg-[#F5EBE1] font-black text-xs flex items-center justify-center gap-1.5 transition active:scale-[0.98] cursor-pointer shadow-2xs">
                                     <span class="text-base">💬</span>
                                     <span>Chat</span>
                                 </button>
-                            </form>
+                            @else
+                                <form action="{{ route('chat.start') }}" method="POST" class="sm:col-span-3">
+                                    @csrf
+                                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+                                    @if($product->store_id)
+                                        <input type="hidden" name="store_id" value="{{ $product->store_id }}">
+                                    @endif
+                                    <button type="submit"
+                                            title="Tanyakan produk ini langsung ke penjual"
+                                            class="w-full py-3.5 px-3 rounded-xl border-2 border-[#6B4226] bg-[#FAF4ED] text-[#6B4226] hover:bg-[#F5EBE1] font-black text-xs flex items-center justify-center gap-1.5 transition active:scale-[0.98] cursor-pointer shadow-2xs">
+                                        <span class="text-base">💬</span>
+                                        <span>Chat</span>
+                                    </button>
+                                </form>
+                            @endguest
 
-                            <!-- Add to Cart Button (Opens Card Modal for Variant Selection) -->
-                            <button type="button"
-                                    @click="openCardModal('cart')"
-                                    class="sm:col-span-4 w-full py-3.5 px-4 rounded-xl border-2 border-[#6B4226] bg-white text-[#6B4226] hover:bg-[#FAF4ED] font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer shadow-2xs">
-                                <span>🛒</span>
-                                <span>+ Keranjang</span>
-                            </button>
+                            @if(Auth::check() && $product->isOwnedBy(Auth::user()))
+                                <div class="sm:col-span-9 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 select-none shadow-2xs">
+                                    <span class="text-base">🏪</span>
+                                    <span>Ini adalah produk tokomu sendiri (tidak dapat dibeli).</span>
+                                </div>
+                            @elseif($product->store && $product->store->isSuspended())
+                                <div class="sm:col-span-9 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 select-none shadow-2xs">
+                                    <span class="text-base">🚫</span>
+                                    <span>Toko ini sedang dinonaktifkan sementara oleh Admin.</span>
+                                </div>
+                            @elseif($product->store && $product->store->isClosed())
+                                <div class="sm:col-span-9 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 select-none shadow-2xs">
+                                    <span class="text-base">🏖️</span>
+                                    <span>Toko sedang libur / tutup sementara dan belum melayani pesanan.</span>
+                                </div>
+                            @else
+                                <!-- Add to Cart Button (Opens Card Modal for Variant Selection) -->
+                                <button type="button"
+                                        @click="openCardModal('cart')"
+                                        class="sm:col-span-4 w-full py-3.5 px-4 rounded-xl border-2 border-[#6B4226] bg-white text-[#6B4226] hover:bg-[#FAF4ED] font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer shadow-2xs">
+                                    <span>🛒</span>
+                                    <span>+ Keranjang</span>
+                                </button>
 
-                            <!-- Buy Now Button (Opens Card Modal) -->
-                            <button type="button"
-                                    @click="openCardModal('buy')"
-                                    class="sm:col-span-5 w-full py-3.5 px-4 rounded-xl bg-[#6B4226] hover:bg-[#54321B] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer shadow-md">
-                                <span>⚡</span>
-                                <span>Beli Sekarang</span>
-                            </button>
+                                <!-- Buy Now Button (Opens Card Modal) -->
+                                <button type="button"
+                                        @click="openCardModal('buy')"
+                                        class="sm:col-span-5 w-full py-3.5 px-4 rounded-xl bg-[#6B4226] hover:bg-[#54321B] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer shadow-md">
+                                    <span>⚡</span>
+                                    <span>Beli Sekarang</span>
+                                </button>
+                            @endif
                         </div>
                     </div>
 
@@ -704,6 +855,108 @@
                 @foreach($reviews as $rev)
                     <div class="py-5 space-y-2.5"
                          x-show="selectedStarFilter === 'all' || selectedStarFilter === '{{ $rev->rating }}'"
+                         x-data="{
+                             isLiked: {{ $rev->isLikedBy(Auth::user()) ? 'true' : 'false' }},
+                             likesCount: {{ (int) ($rev->likes_count ?? $rev->likes()->count()) }},
+                             isLiking: false,
+                             showComments: false,
+                             showReplyInput: false,
+                             commentsCount: {{ (int) ($rev->comments_count ?? $rev->comments()->count()) }},
+                             commentText: '',
+                             isSubmittingComment: false,
+                             newComments: [],
+
+                             toggleLike() {
+                                  @guest
+                                      window.showAuthModal({
+                                          icon: '❤️',
+                                          title: 'Sukai Ulasan Pembeli',
+                                          message: 'Yuk masuk ke akunmu terlebih dahulu untuk memberikan apresiasi like pada ulasan pembeli ini.'
+                                      });
+                                      return;
+                                  @endguest
+
+                                  if (this.isLiking) return;
+                                  this.isLiking = true;
+
+                                  fetch('{{ route('reviews.like', $rev->id) }}', {
+                                      method: 'POST',
+                                      headers: {
+                                          'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                          'X-Requested-With': 'XMLHttpRequest',
+                                          'Accept': 'application/json'
+                                      }
+                                  })
+                                  .then(r => r.json())
+                                  .then(data => {
+                                      this.isLiking = false;
+                                      if (data.success) {
+                                          this.isLiked = data.liked;
+                                          this.likesCount = data.likes_count;
+                                      }
+                                  })
+                                  .catch(() => {
+                                      this.isLiking = false;
+                                  });
+                              },
+
+                              openReplyInput() {
+                                  @guest
+                                      window.showAuthModal({
+                                          icon: '💬',
+                                          title: 'Tulis Komentar Ulasan',
+                                          message: 'Yuk masuk ke akunmu terlebih dahulu untuk menulis tanggapan atau komentar pada ulasan ini.'
+                                      });
+                                      return;
+                                  @endguest
+
+                                  this.showReplyInput = true;
+                                  this.showComments = true;
+                                  this.$nextTick(() => {
+                                      this.$refs.commentInput?.focus();
+                                  });
+                              },
+
+                              submitComment() {
+                                  @guest
+                                      window.showAuthModal({
+                                          icon: '💬',
+                                          title: 'Tulis Komentar Ulasan',
+                                          message: 'Yuk masuk ke akunmu terlebih dahulu untuk menulis tanggapan atau komentar pada ulasan ini.'
+                                      });
+                                      return;
+                                  @endguest
+
+                                 const text = this.commentText.trim();
+                                 if (text.length < 2) return;
+
+                                 this.isSubmittingComment = true;
+                                 fetch('{{ route('reviews.comments.store', $rev->id) }}', {
+                                     method: 'POST',
+                                     headers: {
+                                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                         'X-Requested-With': 'XMLHttpRequest',
+                                         'Content-Type': 'application/json',
+                                         'Accept': 'application/json'
+                                     },
+                                     body: JSON.stringify({ comment: text })
+                                 })
+                                 .then(r => r.json())
+                                 .then(data => {
+                                     this.isSubmittingComment = false;
+                                     if (data.success) {
+                                         this.newComments.push(data.comment);
+                                         this.commentsCount = data.comments_count;
+                                         this.commentText = '';
+                                         this.showComments = true;
+                                         this.showReplyInput = false;
+                                     }
+                                 })
+                                 .catch(() => {
+                                     this.isSubmittingComment = false;
+                                 });
+                             }
+                         }"
                          x-transition>
                         <!-- Reviewer Info Header -->
                         <div class="flex items-center justify-between gap-3">
@@ -765,6 +1018,155 @@
                                 @endforeach
                             </div>
                         @endif
+
+                        <!-- Action Bar: Like & Reply Buttons (YouTube & TikTok Clean Style) -->
+                        <div class="flex items-center gap-4 pl-13 pt-2 text-xs text-[#7A6C60]">
+                            <!-- Like Button -->
+                            <button type="button" 
+                                    @click="toggleLike()"
+                                    :disabled="isLiking"
+                                    class="inline-flex items-center gap-1.5 hover:text-[#2D241E] transition cursor-pointer group"
+                                    :class="isLiked ? 'text-rose-600 font-bold' : 'text-[#7A6C60] font-medium'">
+                                <svg class="w-4 h-4 transition-transform group-active:scale-125" 
+                                     :class="isLiked ? 'text-rose-600 fill-rose-600' : 'text-[#8A7C70] group-hover:text-[#2D241E]'"
+                                     :fill="isLiked ? 'currentColor' : 'none'" 
+                                     stroke="currentColor" 
+                                     viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                                </svg>
+                                <span x-show="likesCount > 0" x-text="likesCount" class="text-xs"></span>
+                                <span x-show="likesCount === 0" class="text-[11px]">Suka</span>
+                            </button>
+
+                            <!-- Reply / Balas Button -->
+                            <button type="button" 
+                                    @click="openReplyInput()"
+                                    class="font-semibold text-[11px] sm:text-xs text-[#7A6C60] hover:text-[#2D241E] transition cursor-pointer flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                </svg>
+                                <span>Balas</span>
+                            </button>
+                        </div>
+
+                        <!-- Replies Dropdown Toggle (YouTube Signature: "▼ X balasan") -->
+                        <div class="pl-13 pt-0.5" x-show="commentsCount > 0">
+                            <button type="button" 
+                                    @click="showComments = !showComments" 
+                                    class="inline-flex items-center gap-1.5 text-xs font-bold text-[#6B4226] hover:text-[#54321B] hover:underline transition cursor-pointer py-1">
+                                <svg class="w-3.5 h-3.5 transition-transform duration-200" :class="showComments ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                                <span x-text="showComments ? 'Sembunyikan balasan' : (commentsCount + ' balasan')"></span>
+                            </button>
+                        </div>
+
+                        <!-- Thread Container (YouTube / TikTok Style - Clean & Unboxed) -->
+                        <div x-show="showComments || showReplyInput" x-cloak x-transition class="pl-13 pt-1 space-y-3">
+                            <!-- Replies List -->
+                            <div x-show="showComments" class="space-y-3">
+                                @foreach($rev->comments as $comm)
+                                    @php
+                                        $isCommSeller = ($product->store && $product->store->user_id === $comm->user_id);
+                                    @endphp
+                                    <div class="flex items-start gap-2.5">
+                                        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-[#6B4226] to-[#452713] text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                                            {{ strtoupper(substr($comm->user->name ?? 'P', 0, 2)) }}
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap leading-tight">
+                                                <span class="font-bold text-xs text-[#2D241E]">{{ $comm->user->name ?? 'Pengguna' }}</span>
+                                                @if($isCommSeller)
+                                                    <span class="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-[#FAF4ED] text-[#6B4226] border border-[#6B4226]/20">
+                                                        Penjual
+                                                    </span>
+                                                @endif
+                                                <span class="text-[11px] text-[#8A7C70]">• {{ $comm->created_at->diffForHumans() }}</span>
+                                            </div>
+                                            <p class="text-xs sm:text-sm text-[#3D3028] mt-1 leading-relaxed">
+                                                {{ $comm->comment }}
+                                            </p>
+                                            <div class="flex items-center gap-3 mt-1 text-[11px] text-[#8A7C70]">
+                                                <button type="button" 
+                                                        @click="openReplyInput(); commentText = '@' + '{{ $comm->user->name ?? 'Pengguna' }}' + ' '"
+                                                        class="font-semibold hover:text-[#2D241E] transition cursor-pointer">
+                                                    Balas
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+
+                                <!-- Newly submitted comments (Appended via AJAX) -->
+                                <template x-for="c in newComments" :key="c.id">
+                                    <div class="flex items-start gap-2.5">
+                                        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-[#6B4226] to-[#452713] text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5" x-text="c.user_initial">
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap leading-tight">
+                                                <span class="font-bold text-xs text-[#2D241E]" x-text="c.user_name"></span>
+                                                <template x-if="c.is_seller">
+                                                    <span class="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-[#FAF4ED] text-[#6B4226] border border-[#6B4226]/20">
+                                                        Penjual
+                                                    </span>
+                                                </template>
+                                                <span class="text-[11px] text-emerald-700 font-semibold">• Baru saja</span>
+                                            </div>
+                                            <p class="text-xs sm:text-sm text-[#3D3028] mt-1 leading-relaxed" x-text="c.comment"></p>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- Comment/Reply Input Form (YouTube Minimal Flat Style) -->
+                            <div x-show="showReplyInput" x-cloak class="pt-2">
+                                @auth
+                                    <div class="flex items-start gap-2.5">
+                                        <div class="w-7 h-7 rounded-full bg-[#6B4226] text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-1">
+                                            {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 2)) }}
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <form @submit.prevent="submitComment()">
+                                                <input type="text" 
+                                                       x-ref="commentInput"
+                                                       x-model="commentText" 
+                                                       :disabled="isSubmittingComment"
+                                                       placeholder="Tambahkan balasan..."
+                                                       class="w-full text-xs sm:text-sm bg-transparent border-b border-[#D5C9BD] focus:border-[#6B4226] py-1.5 focus:outline-none text-[#2D241E] placeholder:text-[#9E9084] transition">
+                                                <div class="flex items-center justify-end gap-2 mt-2">
+                                                    <button type="button" 
+                                                            @click="commentText = ''; showReplyInput = false" 
+                                                            class="px-3 py-1.5 text-xs font-semibold text-[#7A6C60] hover:text-[#2D241E] rounded-full hover:bg-black/5 transition cursor-pointer">
+                                                        Batal
+                                                    </button>
+                                                    <button type="submit" 
+                                                            :disabled="isSubmittingComment || commentText.trim().length < 2"
+                                                            class="px-4 py-1.5 text-xs font-bold rounded-full transition cursor-pointer flex items-center gap-1.5"
+                                                            :class="commentText.trim().length >= 2 ? 'bg-[#6B4226] hover:bg-[#54321B] text-white shadow-xs' : 'bg-[#EAE1D7] text-[#9E9084] cursor-not-allowed'">
+                                                        <span x-show="!isSubmittingComment">Balas</span>
+                                                        <span x-show="isSubmittingComment" class="inline-block animate-spin">⏳</span>
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="flex items-center gap-2.5 py-1">
+                                        <div class="w-7 h-7 rounded-full bg-neutral-200 text-neutral-500 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                            👤
+                                        </div>
+                                        <div class="flex-1 min-w-0 flex items-center justify-between border-b border-[#D5C9BD] py-1.5">
+                                            <span class="text-xs text-[#9E9084]">Tambahkan balasan...</span>
+                                            <button type="button" 
+                                                    @click="window.showAuthModal({ icon: '💬', title: 'Tulis Komentar Ulasan', message: 'Yuk masuk ke akunmu terlebih dahulu untuk menanggapi ulasan pembeli ini.' })" 
+                                                    class="text-xs font-bold text-[#6B4226] hover:underline cursor-pointer">
+                                                Masuk
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endauth
+                            </div>
+                        </div>
                     </div>
                 @endforeach
             </div>
